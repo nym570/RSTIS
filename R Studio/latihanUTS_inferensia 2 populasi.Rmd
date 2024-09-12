@@ -1,0 +1,171 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+#sampel berpasangan
+```{r}
+X1 <- c(73,43,47,53,58,47,52,38,61,56,56,34,55,65,75)
+X2 <- c(31,19,22,26,36,30,29,36,34,33,19,19,26,15,18)
+K1 <- cbind(X1,X2)
+K1
+print("==============")
+Y1 <- c(51,41,43,41,47,32,24,43,53,52,57,44,57,40,68)
+Y2 <- c(35,14,19,29,34,26,19,37,24,27,14,19,30,7,13)
+K2 <- cbind(Y1,Y2)
+K2
+print("================")
+diff <- K1-K2
+diff
+```
+
+```{r}
+T.test <- function(X, mu=0){
+  X <- as.matrix(X)
+  n <- nrow(X)
+  p <- ncol(X)
+  df2 <- n - p
+  if(df2 < 1L) stop("Need nrow(X) > ncol(X).")
+  if(length(mu) != p) mu <- rep(mu[1], p)
+  xbar <- colMeans(X)
+  S <- cov(X)
+  T2 <- n * t(xbar - mu) %*% solve(S) %*% (xbar - mu)
+  Fstat <- T2 / (p * (n-1) / df2)
+  pval <- 1 - pf(Fstat, df1=p, df2=df2)
+  bonf_low <- xbar - qt(1-(0.05/(2*p)),n-1) * sqrt(S/n)
+  bonf_upp <- xbar + qt(1-(0.05/(2*p)),n-1) * sqrt(S/n)
+  print(paste(bonf_low," ",bonf_upp))
+  data.frame(T2=as.numeric(T2), Fstat=as.numeric(Fstat),
+  df1=p, df2=df2, p.value=as.numeric(pval), row.names="")
+  
+}
+```
+
+```{r}
+muH0 = c(0,0)
+T.test(diff,muH0)
+
+library(DescTools)
+HotellingsT2Test(diff,mu=muH0)
+```
+
+
+#Repeated
+```{r}
+library(readxl)
+contoh_3 <- read_excel("C:/Users/lili/Downloads/contoh_3.xlsx")
+contoh_3
+```
+
+```{r}
+contrast=c(-1,1,1,-1,-1,-1,1,1,-1,1,-1,1)
+matriks=matrix(contrast,3,4)
+matriks
+```
+
+```{r}
+xbar <- colMeans(contoh_3)
+xbar1 <- matrix(xbar,4,1)
+xbar1
+print("============")
+sig <- cov(contoh_3)
+sig
+n <- nrow(contoh_3)
+q <- ncol(contoh_3)
+```
+
+```{r}
+Test=n*(t(matriks%*%xbar1))%*%solve(matriks%*%sig%*%(t(matriks)))%*%(matriks%*%xbar1)
+Test
+```
+
+```{r}
+
+Ftest <- (((n-1)*(q-1))/(n-q+1))*qf(0.95,q-1,n-q+1)
+Ftest
+```
+
+#independen
+
+```{r}
+library(readxl)
+library(DescTools)
+library(asbio)
+contohsoal_1 <- read_excel("C:/Users/lili/Downloads/vektorrata1.xlsx")
+contohsoal_1
+```
+
+```{r}
+ybar <- colMeans(contohsoal_1)
+ybar
+```
+
+```{r}
+a1=as.matrix(contohsoal_1[1:32,1:4],nrow=32,ncol=4)
+a2=as.matrix(contohsoal_1[1:32,5:8],nrow=32,ncol=4)
+colnames(a2)=c("x12","x22","x32","x42")
+gabung=rbind(a1,a2)
+emosi=factor(c(rep(1,32),rep(2,32)))
+Kullback(gabung,emosi)
+```
+
+```{r}
+HotellingsT2Test(gabung~emosi)
+```
+
+#2020/2021 Berpasangan
+```{r}
+df <- data.frame(
+ antivirus = c(rep("XYZ", 8), rep("PQR", 8)),
+ branded = c(3, 3, 5, 4, 5, 2, 4, 2, 3, 2, 4, 3, 3, 1, 2, 3),
+ local = c(4, 5, 6, 4, 7, 4, 5, 3, 3, 4, 6, 5, 6, 3, 3, 4)
+)
+xyz <- df %>%
+ filter(antivirus == "XYZ")
+pqr <- df %>%
+ filter(antivirus == "PQR") 
+df
+```
+
+```{r}
+df %>%
+ group_by(antivirus) %>%
+ summarise(mshapiro_test(data.frame(branded, local)))
+```
+
+```{r}
+boxM(df[,-1], df$antivirus)
+```
+
+```{r}
+result_pair<-Mpaired(T1=xyz[,-1],T2=pqr[,-1])
+summary(result_pair) 
+```
+
+```{r}
+diff <- df[1:8,-1]-df[9:16,-1]
+T.test <- function(X, mu=0){
+  X <- as.matrix(X)
+  n <- nrow(X)
+  p <- ncol(X)
+  df2 <- n - p
+  if(df2 < 1L) stop("Need nrow(X) > ncol(X).")
+  if(length(mu) != p) mu <- rep(mu[1], p)
+  xbar <- colMeans(X)
+  S <- cov(X)
+  T2 <- n * t(xbar - mu) %*% solve(S) %*% (xbar - mu)
+  Fstat <- T2 / (p * (n-1) / df2)
+  pval <- 1 - pf(Fstat, df1=p, df2=df2)
+  for(i in 1:p){
+    bonf_low <- xbar[i] - qt(1-(0.05/(2*p)),n-1) * sqrt(S[i,i]/n)
+  bonf_upp <- xbar[i] + qt(1-(0.05/(2*p)),n-1) * sqrt(S[i,i]/n)
+  print(paste(bonf_low," ",bonf_upp))
+  }
+  
+  data.frame(T2=as.numeric(T2), Fstat=as.numeric(Fstat),
+  df1=p, df2=df2, p.value=as.numeric(pval), row.names="")
+  
+}
+T.test(diff)
+```
+

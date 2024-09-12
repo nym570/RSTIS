@@ -1,0 +1,144 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(foreign)
+data <- read.spss("C:/Users/lili/Downloads/SAQ8.sav", to.data.frame=TRUE)
+data
+```
+
+```{r}
+databaru <- as.data.frame(sapply(data, as.numeric))
+databaru
+```
+
+
+```{r}
+for(i in 1:ncol(databaru)) {
+  hist(databaru[,i], prob = TRUE, main = colnames(databaru)[i], xlab = colnames(databaru)[i])
+  lines(density(databaru[,i]))
+}
+```
+
+```{r}
+library(MVN)
+mvn(databaru, mvnTest = "mardia")
+```
+
+```{r}
+library(REdaS)
+bart_spher(databaru)
+```
+
+```{r}
+cor(databaru)
+```
+
+```{r}
+library(psych)
+KMO(databaru)
+```
+
+```{r}
+R <- cov(databaru)
+eigen <- eigen(R)
+eigen
+```
+
+
+```{r}
+scree(R)
+```
+
+```{r}
+fa.parallel(R)
+```
+
+
+#Metode PCA
+```{r}
+sapply(1:3, function(f) fa(databaru, nfactors = f, fm = "pa", rotate = "varimax", residuals = T, scores = )$PVAL)
+```
+
+```{r}
+fa1 <- fa(databaru, nfactors = 2, fm = "pa", rotate = "varimax", residuals = T)
+fa1
+```
+
+```{r}
+fact <- factanal(covmat = R, factors = 2)
+fact
+```
+
+
+```{r}
+fa1$loadings
+```
+
+```{r}
+fa.diagram(fa1$loadings)
+```
+
+```{r}
+loadings <- fact$loadings
+(communality <- rowSums(loadings^2))
+colSums(loadings^2)
+```
+
+```{r}
+(spec_var <- diag(cov(databaru))-communality)
+```
+
+```{r}
+fa1$residual
+```
+
+```{r}
+fa1$rot.mat
+```
+
+```{r}
+head(fa1$scores)
+```
+
+
+#MLE
+```{r}
+sapply(1:3, function(f) factanal(databaru, factors = f, method = "mle")$PVAL)
+```
+
+```{r}
+(fac <- factanal(databaru, factors = 2, method = "mle", scores = "regression"))
+```
+
+```{r}
+loadings <- fac$loadings
+(communality <- rowSums(loadings^2))
+colSums(loadings^2)
+```
+
+```{r}
+(spec_var <- diag(cov(databaru))-communality)
+```
+
+```{r}
+cov(databaru) - (as.matrix(loadings) %*% t(as.matrix(loadings)) + diag(spec_var))
+```
+
+```{r}
+fa.diagram(fac$loadings)
+```
+
+
+```{r}
+fac$rotmat
+```
+
+```{r}
+head(fac$scores)
+```
+
+

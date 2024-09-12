@@ -1,0 +1,104 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(MASS)
+library(MVN)
+library(biotools)
+library(readxl)
+library(tidyverse)
+library(caret)
+```
+
+```{r}
+pot <- read_excel("C:/Users/lili/Downloads/data13.xlsx")
+knitr::kable(head(pot, 10))
+```
+
+```{r}
+pot$kiln <- as.factor(pot$kiln)
+summary(pot)
+```
+
+```{r}
+mnv <- manova(cbind(Al2O3,Fe2O3,MgO,CaO,Na2O,K2O,TiO2,MnO,BaO)~kiln,
+data=pot)
+summary(mnv)
+```
+Terlihat bahwa tolak H0 sehingga ada perbedaan yang signifikan
+
+#Uji Homogenitas
+H0 : ∑1=∑2=∑3
+H1 : Minimal ada satu yang berbeda
+```{r}
+boxM(pot[,-length(pot)], pot$kiln)
+```
+Terlihat bahwa tidak memenuhi asumsi homogenitas (tolak H0). Namun pada tutorial kali ini akan dianggap memenuhi asumsi homogenitas.
+
+#Uji Normalitas
+```{r}
+mvn(pot[, -length(pot)])
+```
+Terlihat bahwa data tidak semuanya berdistribusi normal. Tetapi pada tutorial kali ini akan dianggap memenuhi asumsi normalitas
+
+#Buat Model
+```{r}
+set.seed(123)
+k <- length(levels(pot$kiln))
+n <- nrow(pot)
+# data training sebanyak
+idx <- sample(1:n, 36)
+pot.tr <- pot[idx,] #data training
+pot.ts <- pot[-idx,] #data testing
+# Analisis Diskriminan
+fit<-lda(kiln~.,data=pot.tr)
+# Output dari analisis diskriminan
+fit
+```
+Dari hasil diatas bisa dilihat prior yang digunakan, koefisien diskriminannya dan juga proporsi of trace untuk setiap diskriminan yang dibuat.
+
+#Scores
+```{r}
+zscore <- predict(fit,pot[,-10])
+knitr::kable(head(zscore$x, 10))
+```
+
+#Korelasi
+Korelasi antara var original dengan discriminant score
+```{r}
+kor1 <- t(cor(zscore$x[,1],pot[,-10]))
+kor2 <- t(cor(zscore$x[,2],pot[,-10]))
+tabkor<-data.frame(kor1,kor2)
+tabkor
+```
+
+#Prediksi data Tersting
+```{r}
+pred <- predict(fit,pot.ts[,-10])
+pred
+```
+
+Penilaian akurasi hasil prediksi
+```{r}
+ct <- table(pot.ts$kiln, pred$class)
+ct
+```
+Terlihat bahwa model berhasil mengklasifikasikan semua data dengan benar
+```{r}
+# total percent correct
+sum(diag(prop.table(ct)))
+```
+
+#Plot LDA
+```{r}
+lda.data <- cbind(pot.tr, predict(fit)$x)
+ggplot(lda.data, aes(LD1, LD2)) +
+geom_point(aes(color = as.factor(kiln))) +
+theme_minimal()
+```
+
+
+

@@ -1,0 +1,119 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+Y11 <- c(72,66.5,54,67,44,41,34.5,34.5,24)
+Y12 <- c(50,48,57,60,57,52,50,46,54)
+Y13 <- c(8,15,14,15,14,18,4,8.5,3)
+Y14 <- c(0.5,1,1,0.9,0.3,1.9,0.5,1,1.2)
+Y21 <- c(57,100,100,96.5,79,78.5,48,155,84,105)
+Y22 <- c(57,54,32,65,51,53,50,44,64,35)
+Y23 <- c(12.5,17,16.5,20.5,18,18,21,20.5,13,17)
+Y24 <- c(0.9,0.5,0.7,0.9,0.9,1.2,1.6,1.4,0.8,1.8)
+K1 <- cbind(Y11,Y12,Y13,Y14)
+K2 <- cbind(Y21,Y22,Y23,Y24)
+
+library("DescTools")
+library("asbio")
+ybar1 <- apply(K1,2,mean)
+ybar2 <- apply(K2,2,mean)
+ybar1
+ybar2
+```
+
+```{r}
+a1 <- as.matrix(K1,nrow=9,ncol=4)
+a2 <- as.matrix(K2,nrow=10,ncol=4)
+colnames(a1) <- c("x1","x2","x3","x4")
+colnames(a2) <- c("y1","y2","y3","y4")
+gabung <- rbind(a1,a2)
+lala <- factor(c(rep(1,9),rep(2,10)))
+Kullback(gabung,lala)
+```
+
+```{r}
+HotellingsT2Test(gabung~lala)
+```
+
+
+No 2
+
+```{r}
+Y1 <- c(148,159,144,103,121,89,119,123,76,217,148,151,83,135,178)
+Y2 <- c(20,24,19,18,17,11,17,13,16,29,22,21,7,20,15)
+X1 <- c(137,164,224,208,178,128,154,158,102,214,209,151,123,161,175)
+X2 <- c(15,25,27,33,24,20,18,16,21,25,24,16,13,22,23)
+K1 <- cbind(X1,X2)
+K2 <- cbind(Y1,Y2)
+diff <- K1-K2
+diff
+```
+
+```{r}
+muH0=c(0,0)
+```
+
+```{r}
+T.test <- function(X, mu=0){
+X <- as.matrix(X)
+n <- nrow(X)
+p <- ncol(X)
+df2 <- n - p
+if(df2 < 1L) stop("Need nrow(X) > ncol(X).")
+if(length(mu) != p) mu <- rep(mu[1], p)
+xbar <- colMeans(X)
+S <- cov(X)
+T2 <- n * t(xbar - mu) %*% solve(S) %*% (xbar - mu)
+Fstat <- T2 / (p * (n-1) / df2)
+pval <- 1 - pf(Fstat, df1=p, df2=df2)
+data.frame(T2=as.numeric(T2), Fstat=as.numeric(Fstat),
+df1=p, df2=df2, p.value=as.numeric(pval), row.names="")
+}
+T.test(diff,muH0)
+```
+
+
+```{r}
+qf(0.95,27,25)*3.24
+```
+
+
+
+No 3
+```{r}
+U <- c(72,60,56,41,32,30,39,42,37,33,32,63,54,47,91,56,79,81,78,46,39,32,60,35,39,50,43,48)
+T <- c(66,53,57,29,32,35,39,43,40,29,30,45,46,51,79,68,65,80,55,38,35,30,50,37,36,34,37,54)
+S <- c(76,66,64,36,35,34,31,31,31,27,34,74,60,52,100,47,70,68,67,37,34,30,67,48,39,37,39,57)
+B <- c(77,63,58,38,36,26,27,25,25,36,28,63,52,43,75,50,61,58,60,38,37,32,54,39,31,40,50,43)
+data <- data.frame(U,T,S,B)
+data
+```
+
+```{r}
+contrast <- c(1,-1,1,0,0,1,1,-1,-1,0,0,-1)
+matriks <- matrix(contrast,3,4)
+matriks
+```
+
+```{r}
+xbar <- apply(data,2,mean)
+xbar1 <-matrix(xbar,4,1)
+xbar1
+```
+
+```{r}
+sigs <- cov(data)
+sigs
+```
+
+```{r}
+Test=28*(t(matriks%*%xbar1))%*%solve(matriks%*%sigs%*%(t(matriks)))%*%(matriks%*%xbar1)
+Test
+```
+
+
+
+

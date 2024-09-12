@@ -1,0 +1,261 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(biotools)
+fish_score <- read.csv("C:/Users/lili/Downloads/tabel7_1.csv")
+fish_score
+```
+
+```{r}
+boxM(fish_score[,1:4],fish_score[,5])
+```
+
+```{r}
+manova <- function(nL,xbarL,SL,alpha,method){
+  library(crayon)
+  p = nrow(xbarL[[1]])
+  g = length(nL)
+  n = sum(nL) #n total
+  W = matrix(rep(0,p*p),ncol=p) #sum square within/error
+  xbar = 0 
+  for(L in 1:g){
+    W = W + (nL[L]-1)*SL[[L]]
+    xbar = xbar + nL[[L]]*xbarL[[L]]
+  }
+  xbar = xbar/n #mean overall
+  S_pooled = W/(n-g)
+  B = matrix(rep(0,p*p),ncol=p,nrow=p) #sum square between/treatments
+  for(L in  1:g){
+    B = B + nL[[L]]*(xbarL[[L]]-xbar)%*%t((xbarL[[L]]-xbar))
+  }
+  Tot = B+W #sum square total
+  lambda = 0
+  if(tolower(method)=="wilks")
+    lambda = det(W)/det(Tot)
+  else if(tolower(method)=="hotellig-lawley" || tolower(method)=="lawley-hotelling")
+    lambda = sum(diag(B%*%solve(W)))
+  else if(tolower(method)=="pillai")
+    lambda = sum(diag(B%*%solve(B+W)))
+  else if(tolower(method)=="roy")
+    lambda = max(eigen(W%*%solve(B+W))$values)
+  else{
+    stop("The method not available")
+  }
+  sample_large = FALSE
+  for(L in 1:g){
+    if(nL[[L]]>5*p) sample_large = TRUE
+    else {
+      sample_large = FALSE
+      break
+    }
+  }
+  stat_uji = 0
+  nilai_kritis = 0
+  if(sample_large==TRUE){
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }else 
+    if(p==1 && g>=2){
+    stat_uji = (n-g)/(g-1)*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,g-1,n-g)
+  }else if(p==2 && g>=2){
+    stat_uji = (n-g-1)/(g-1)*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*(g-1),2*(n-g-1))
+  }else if(p>=1 && g==2){
+    stat_uji = (n-p-1)/p*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,p,n-p-1)
+  }else if(p>=1 && g==3){
+    stat_uji = (n-p-2)/p*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*p,2*(n-p-2))
+  }else{
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }
+  print(paste("n = ",n))
+  print(paste("g = ",g))
+  print(paste("p = ",p))
+  print("Mean Overall (xbar) = ")
+  print(xbar)
+  print("S pooled = ")
+  print(S_pooled)
+  print("Sum Square Error/Within (W) = ")
+  print(W)
+  print("Sum Square Treatments/Between (B) = ")
+  print(B)
+  print("Sum Square Total (T) = ")
+  print(Tot)
+  if(tolower(method)=="wilks")
+    print("Method : Wilks")
+  else if(tolower(method)=="hotelling-laylew" || tolower(method)=="lawley-hotelling")
+    print("Method : Hotelling-Lawley")
+  else if(tolower(method)=="pillai")
+    print("Method : Pillai")
+  else if(tolower(method)=="roy")
+    print("Method : Roy")
+  print(paste("Lambda = ",lambda))
+  if(sample_large){
+    print("This is large sample size")
+  }else{
+    print("This is small sample size")
+  }
+  print(paste("Test Statistics Value = ", stat_uji))
+  print(paste("Critical Value = ",nilai_kritis))
+  if(stat_uji>nilai_kritis){
+    print("Conclusion: Reject H0")
+  }else{
+    print("Conclusion: Not Reject H0")
+  }
+  for(i in 1:g){
+      if(i==g)
+          break
+      for(j in 1:p){
+        for(k in i+1:g){
+          if(k>g)
+            next
+          print(paste("CI of mean(group",i,", variable",j,") - mean(group",k,", variable",j,")"))
+          lower = xbarL[[i]][j]-xbarL[[k]][j]-qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          upper = xbarL[[i]][j]-xbarL[[k]][j]+qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          print(paste(">> Lower = ",lower))
+          print(paste(">> Upper = ",upper))
+          if(ceiling(lower)>0 || floor(upper)<0)
+            cat(yellow("Note: This causes reject H0"),"\n")  
+        }
+      }
+    }
+}
+```
+
+```{r}
+n1 = nrow(fish_score[1:12,-5])
+n2 = nrow(fish_score[13:24,-5])
+n3 = nrow(fish_score[25:36,-5])
+nl = c(n1,n2,n3)
+xbar1 = matrix(colMeans(fish_score[1:12,-5]),4,1)
+xbar2 = matrix(colMeans(fish_score[13:24,-5]),4,1)
+xbar3 = matrix(colMeans(fish_score[25:36,-5]),4,1)
+xbarl = list(xbar1,xbar2,xbar3)
+S1 = matrix(cov(fish_score[1:12,-5]),4,4)
+S2 = matrix(cov(fish_score[13:24,-5]),4,4)
+S3 = matrix(cov(fish_score[25:36,-5]),4,4)
+Sl = list(S1,S2,S3)
+manova(nl,xbarl,Sl,0.01,"wilks")
+```
+
+```{r}
+y11 <- c(9,6,9)
+y12 <- c(3,2,7)
+y21 <- c(0,2)
+y22 <- c(4,0)
+y31 <- c(3,1,2)
+y32 <- c(8,9,7)
+y1 <- data.frame(y11,y12)
+y2 <- data.frame(y21,y22)
+y3 <- data.frame(y31,y32)
+n1 = nrow(y1)
+n2 = nrow(y2)
+n3 = nrow(y3)
+nl = c(n1,n2,n3)
+xbar1 = matrix(colMeans(y1),2,1)
+xbar2 = matrix(colMeans(y2),2,1)
+xbar3 = matrix(colMeans(y3),2,1)
+xbarl = list(xbar1,xbar2,xbar3)
+S1 = matrix(cov(y1),2,2)
+S2 = matrix(cov(y2),2,2)
+S3 = matrix(cov(y3),2,2)
+Sl = list(S1,S2,S3)
+manova(nl,xbarl,Sl,0.01,"wilks")
+```
+
+#latihan bonferoni
+```{r}
+xbar <- c(95.52,164.38,55.69,93.39,17.98,31.13)
+S <- matrix(c(3266.46, 1343.97, 731.54, 1175.50, 162.68, 238.37, 1343.97, 721.91, 324.25, 537.35, 80.17, 117.73, 731.54,324.25, 179.28, 281.17, 39.15, 56.80, 1175.50,53735, 281.17, 474.98, 63.73, 94.85, 162.68, 80.17, 39.15, 63.73, 9.95, 13.88, 238.37,117.73, 56.80, 94.85, 13.88, 21.26),nrow=6)
+p <- 6
+n <- 61
+a1<-c(1,0,0,0,0,0)
+a2<-c(0,1,0,0,0,0)
+a3<-c(0,0,1,0,0,0)
+a4<-c(0,0,0,1,0,0)
+a5<-c(0,0,0,0,1,0)
+a6<-c(0,0,0,0,0,1)
+df1 <- p
+df2 <- n-p
+new_alp<-0.05/(2*p) #hitung nilai alpha Bonferroni
+#untuk var 1
+#Hitung lower bound
+Lbound1_Bfr<-(t(a1)%*%xbar)-qt((1-new_alp),df=n-1)*sqrt((t(a1)%*%S%*%a1)/n)
+#Hitung upperbound
+Ubound1_Bfr<-(t(a1)%*%xbar)+qt((1-new_alp),df=n-1)*sqrt((t(a1)%*%S%*%a1)/n)
+#untuk var 2
+#Hitung lower bound
+Lbound2_Bfr<-(t(a2)%*%xbar)-qt((1-new_alp),df=n-1)*sqrt((t(a2)%*%S%*%a2)/n)
+#Hitung upperbound
+Ubound2_Bfr<-(t(a2)%*%xbar)+qt((1-new_alp),df=n-1)*sqrt((t(a2)%*%S%*%a2)/n)
+#untuk var 3
+#Hitung lower bound
+Lbound3_Bfr<-(t(a3)%*%xbar)-qt((1-new_alp),df=n-1)*sqrt((t(a3)%*%S%*%a3)/n)
+#Hitung upperbound
+Ubound3_Bfr<-(t(a3)%*%xbar)+qt((1-new_alp),df=n-1)*sqrt((t(a3)%*%S%*%a3)/n)
+#untuk var 4
+#Hitung lower bound
+Lbound4_Bfr<-(t(a4)%*%xbar)-qt((1-new_alp),df=n-1)*sqrt((t(a4)%*%S%*%a4)/n)
+#Hitung upperbound
+Ubound4_Bfr<-(t(a4)%*%xbar)+qt((1-new_alp),df=n-1)*sqrt((t(a4)%*%S%*%a4)/n)
+#untuk var 5
+#Hitung lower bound
+Lbound5_Bfr<-(t(a5)%*%xbar)-qt((1-new_alp),df=n-1)*sqrt((t(a5)%*%S%*%a5)/n)
+#Hitung upperbound
+Ubound5_Bfr<-(t(a5)%*%xbar)+qt((1-new_alp),df=n-1)*sqrt((t(a5)%*%S%*%a5)/n)
+#untuk var 6
+#Hitung lower bound
+Lbound6_Bfr<-(t(a6)%*%xbar)-qt((1-new_alp),df=n-1)*sqrt((t(a6)%*%S%*%a6)/n)
+#Hitung upperbound
+Ubound6_Bfr<-(t(a6)%*%xbar)+qt((1-new_alp),df=n-1)*sqrt((t(a6)%*%S%*%a6)/n)
+#display interval kepercayaan
+cat("95% Bonferroni simultaneous confidence interval for each variable:\n\n",
+Lbound1_Bfr," < mu1 < ",Ubound1_Bfr,"\n",
+Lbound2_Bfr," < mu2 < ",Ubound2_Bfr,"\n",
+Lbound3_Bfr," < mu3 < ",Ubound3_Bfr,"\n",
+Lbound4_Bfr," < mu4 < ",Ubound4_Bfr,"\n",
+Lbound5_Bfr," < mu5 < ",Ubound5_Bfr,"\n",
+Lbound6_Bfr," < mu6 < ",Ubound6_Bfr)
+```
+
+#2020/2021
+```{r}
+library(dplyr)
+library(mvnormtest)
+library(DescTools)
+library(rstatix)
+library(MVTests)
+library(magrittr)
+library(heplots)
+library(HHG)
+library(MANOVA.RM) 
+x1 <- c(10.23, 3.41, 24.67, 1.85, 2.09, 2.46, 1.10, 2.82, 5.88, 2.07, 3.98, 2.15, 1.53)
+x2 <- c(32.29, 10.31, 0.00, 10.84, 19.64, 16.93, 23.88, 7.72, 12.07, 23.17, 17.78, 33.05, 11.46)
+x3 <- c(69.96, 78.62, 80.60, 74.76, 77.77, 84.06, 80.55, 86.46, 68.51, 82.73, 80.03, 86.78, 75.85)
+x <- matrix(c(x1,x2,x3), byrow= FALSE, ncol=3)
+mu0 <- c(3.56, 19.75, 75.67) 
+```
+
+```{r}
+n <- nrow(x)
+p <- ncol(x)
+bar.x <- colMeans(x)
+Sigma <- var(x)
+Sigma.inv <- solve(Sigma)
+a <- bar.x-mu0
+a.trans <- t(a)
+# Manual menggunakan rumus
+T2 <- n * (a.trans) %*% Sigma.inv %*% (a)
+T2 
+result<- OneSampleHT2(x, mu0, alpha= 0.05)
+summary(result) 
+```
+
+

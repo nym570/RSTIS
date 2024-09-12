@@ -1,0 +1,70 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(readr) #Membaca data
+library(dplyr) #Data processing
+library(DT) #Menampilkan tabel agar mudah dilihat di browser
+library(readxl)
+dataset <- read_excel("C:/Users/lili/Downloads/Data11.xlsx")
+dataset
+```
+
+```{r}
+datatable(dataset, caption = "Variabel")
+data_standardized <- round(scale(dataset[,2:6]),4) #Hanya memilih kolom/variabel yang berisikan indikator yang akan digunakan
+datatable(data_standardized, caption = "Data Hasil Standardisasi")
+data_standardized
+```
+
+```{r}
+jumlah_klaster <- c(1:9) #Vektor yang berisikan jumlah klaster yang ingin dilihat nilai dari total within-cluster sum of squares
+within_ss <- c() #Vektor kosong yang akan diisi nilai total within- cluster sum of squares
+for (i in jumlah_klaster) {
+  within_ss <- c(within_ss, kmeans(x = data_standardized, centers = i, nstart = 25)$tot.withinss)
+}
+plot(x = jumlah_klaster, y = within_ss, type = "b", xlab = "Number of Cluster",ylab = "Total Within Sum of Squares",main = "Elbow Plot" ) 
+abline(v = 7, col = 'red')
+```
+
+#hirarki
+```{r}
+dist_data_jateng2 <- dist(data_standardized)
+```
+
+```{r}
+#single linkage dengan scale
+res1_par <- hclust(dist_data_jateng2, method = "single")
+plot(res1_par,hang=-2,cex=1)
+rect.hclust(res1_par,k=7)
+```
+
+
+
+```{r}
+set.seed(123)
+kmeans_clustering <- kmeans(x = data_standardized, centers = 7,
+nstart = 25) #parameter nstart digunakan untuk memberitahu fungsi berapa kali inisiasi centroid awal (secara acak) yang akan dibentuk.
+kmeans_clustering
+```
+Pengelompokan objek ke dalam 7 klaster berdasarkan nilai centroid dari masing-masing variabel. Objek objek dengan nilai centroid yang hampir sama akan dikelompokkan dalam satu klaster sehingga didapat pembagian klasternya sebagai berikut
+
+Dari output diatas dapat di ketahui bahwa klaster pertama beranggotakan 3 observasi, klaster kedua 28 observasi, klaster ketiga 8 observasi, klaster ke empat 20 observasi, klaster kelima 2 observasi, klaster keenam 3 observasi, dan terakhir klaster ketujuh 9
+observasi.
+
+Selanjutnya output diatas menunjukkan nomor klaster untuk setiap observasi. Dari output di atas dapat dilihat bahwa mayoritas kabupaten/kota baik di Jawa Tengah maupun Jawa Timur di kelompokkan dalam klaster 2 dan 4, sedangkan klaster yang paling sedikit pengelompokannya adalah klaster 1, 5 dan 6. Centroid atau pusat dari
+setiap klaster dapat dilihat pada output Cluster means sebagai berikut
+
+```{r}
+dataset %>% mutate(Klaster = kmeans_clustering$cluster) %>% group_by(Klaster) %>% summarise(Mean_kriminalitas = mean(Kriminalitas), Mean_jumlahRS = mean(`Jumlah Rumah Sakit`), Mean_kepadatanpnddk = mean(`Kepadatan Penduduk`), Mean_IPM = mean(IPM), Mean_UMK = mean(UMK))
+```
+
+```{r}
+dataset %>% mutate(Klaster = kmeans_clustering$cluster) %>% select("Kabupaten/Kota", Klaster) %>% arrange(Klaster)
+View(dataset %>% mutate (Klaster = kmeans_clustering$cluster) %>% select("Kabupaten/Kota", Klaster) %>% arrange(Klaster))
+```
+
+

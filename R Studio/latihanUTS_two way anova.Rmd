@@ -1,0 +1,152 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(readxl)
+df <- read_excel("C:/Users/lili/Downloads/data penugasan 6.xlsx")
+df$JenisKelamin <- as.factor(df$JenisKelamin)
+df$SosialEkonomi <- as.factor(df$SosialEkonomi)
+df
+```
+
+```{r}
+X = as.matrix(df[,3:4])
+Xt =t(X)
+X
+```
+
+```{r}
+mod <- lm(X~JenisKelamin*SosialEkonomi,data=df)
+mod
+```
+
+```{r}
+Manova(mod, test="Wilks")
+```
+
+#manual
+```{r}
+n = 4 
+g = 2
+b = 3
+p = 2
+```
+
+```{r}
+xbartot = matrix(colMeans(X))
+xbar_fac1 = matrix(c(colMeans(df[df$JenisKelamin=="A1",3:4]),colMeans(df[df$JenisKelamin=="A2",3:4])),ncol=2)
+xbar_fac2 = matrix(c(colMeans(df[df$SosialEkonomi=="B1",3:4]),colMeans(df[df$SosialEkonomi=="B2",3:4]),colMeans(df[df$SosialEkonomi=="B3",3:4])),ncol=3)
+xbartot
+xbar_fac1
+xbar_fac2
+```
+
+```{r}
+xbar_int = array(c(colMeans(df[df$JenisKelamin=="A1"&df$SosialEkonomi=="B1",3:4]),colMeans(df[df$JenisKelamin=="A1"&df$SosialEkonomi=="B2",3:4]),colMeans(df[df$JenisKelamin=="A1"&df$SosialEkonomi=="B3",3:4]),colMeans(df[df$JenisKelamin=="A2"&df$SosialEkonomi=="B1",3:4]),colMeans(df[df$JenisKelamin=="A2"&df$SosialEkonomi=="B2",3:4]),colMeans(df[df$JenisKelamin=="A2"&df$SosialEkonomi=="B3",3:4])),dim=c(2,1,2,3))
+xbar_int
+```
+
+```{r}
+SSP_fac1 = 0
+for(i in c(1:g)){
+  add = b*n*(xbar_fac1[,i]-xbartot)%*%t(xbar_fac1[,i]-xbartot)
+  SSP_fac1 = SSP_fac1 + add
+}
+SSP_fac1
+```
+
+```{r}
+SSP_fac2 = 0 
+for(i in c(1:g)){
+  add = g*n*(xbar_fac2[,i]-xbartot)%*%t(xbar_fac2[,i]-xbartot)
+  SSP_fac2 = SSP_fac2 + add
+}
+SSP_fac2
+```
+
+```{r}
+SSP_int = 0 
+for(i in c(1:g)){
+  for(j in c(1:b)){
+    add = n*(xbar_int[,,i,j]-xbar_fac1[,i]-xbar_fac2[,j]+xbartot)%*%t(xbar_int[,,i,j]-xbar_fac1[,i]-xbar_fac2[,j]+xbartot)
+    SSP_int = SSP_int + add
+  }
+}
+SSP_int
+```
+
+```{r}
+SSP_res = 0
+for(i in c(1:g)){
+  for(j in c(1:b)){
+    for(r in c(1:n)){
+      x = as.matrix(df[df$JenisKelamin==paste("A",i,sep="") & df$SosialEkonomi==paste("B",j,sep=""),3:4])
+      add = (x[r,]-xbar_int[,,i,j])%*%t(x[r,]-xbar_int[,,i,j])
+      SSP_res = SSP_res + add
+    }
+  }
+}
+SSP_res
+```
+
+```{r}
+f1 = function(a){
+  Wilk = det(SSP_res)/det(SSP_fac1+SSP_res)
+  stat= -(g*b*(n-1)-((p+1-g+1)/2))*log(Wilk)
+  krit = qchisq(1-a,(g-1)*p)
+  print("Statistik Uji :")
+  print(stat)
+  print("Statistik Hitung :")
+  print(krit)
+  if(stat>krit){
+    print("Keputusan : Tolak H0")
+  }
+  else{
+    print("Keputusan : Gagal Tolak H0")
+  }
+}
+f1(0.05)
+```
+
+```{r}
+f2 = function(a){
+  Wilk = det(SSP_res)/det(SSP_fac2+SSP_res)
+  stat= -(g*b*(n-1)-((p+1-b+1)/2))*log(Wilk)
+  krit = qchisq(1-a,(b-1)*p)
+  print("Statistik Uji :")
+  print(stat)
+  print("Statistik Hitung :")
+  print(krit)
+  if(stat>krit){
+    print("Keputusan : Tolak H0")
+  }
+  else{
+    print("Keputusan : Gagal Tolak H0")
+  }
+}
+f2(0.05)
+```
+
+```{r}
+fint = function(a){
+  Wilk = det(SSP_res)/det(SSP_int+SSP_res)
+  stat= -(g*b*(n-1)-((p+1-(g-1)*(b-1))/2))*log(Wilk)
+  krit = qchisq(1-a,(b-1)*p)
+  print("Statistik Uji :")
+  print(stat)
+  print("Statistik Hitung :")
+  print(krit)
+  if(stat>krit){
+    print("Keputusan : Tolak H0")
+  }
+  else{
+    print("Keputusan : Gagal Tolak H0")
+  }
+}
+fint(0.05)
+```
+
+
+

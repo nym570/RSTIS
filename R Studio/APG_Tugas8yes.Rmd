@@ -1,0 +1,121 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(readxl)
+data8.11 <- read_excel("C:/Users/lili/Downloads/data.xlsx")
+data8.11
+```
+
+```{r}
+new_data8.11 <- data8.11
+new_data8.11[,6] <- new_data8.11[,6]*10
+new_data8.11
+```
+
+```{r}
+Sc <- cov(new_data8.11[,2:6])
+Sc
+```
+
+```{r}
+nSc <- cov(data8.11[,2:6])
+nSc
+```
+
+```{r}
+eig <- eigen(Sc)
+eig
+```
+
+```{r}
+for(i in c(1:5)){
+  prop = 0
+  for(j in c(1:i)){
+    tmp = eig$values[j]/sum(eig$values)
+  }
+  print(tmp)
+}
+```
+
+```{r}
+res = princomp(new_data8.11[,2:6],cor=F)
+summary(res)
+```
+
+```{r}
+for(i in c(1:5)){
+  for(j in c(1:5)){
+    tmp = eig$vectors[j,i]*sqrt(eig$values[i]/(Sc[j,j]))
+    print(paste("korelasi Y",i,"X",j,"=",round(tmp,3)))
+  }
+}
+```
+
+```{r}
+cor(new_data8.11[,2:6],res$scores)
+```
+
+
+##############
+
+```{r}
+library(readxl)
+data8.12 <- read_excel("C:/Users/lili/Downloads/data.xlsx",sheet = 2)
+data8.12
+```
+
+```{r}
+S <- cov(data8.12)
+S
+```
+
+```{r}
+R <- cor(data8.12)
+R
+```
+
+```{r}
+eig1 <- eigen(S)
+eig1
+```
+
+```{r}
+eig2 = eigen(R)
+eig2
+```
+
+```{r}
+for(i in c(1:7)){
+  prop = 0
+  for(j in c(1:i)){
+    tmp = eig1$values[j]/sum(eig1$values)
+  }
+  print(tmp)
+}
+```
+
+```{r}
+summary(princomp(data8.12,cor=F))
+```
+
+```{r}
+for(i in c(1:7)){
+  prop = 0
+  for(j in c(1:i)){
+    tmp = eig2$values[j]/sum(eig2$values)
+  }
+  print(tmp)
+}
+```
+
+```{r}
+summary(princomp(data8.12,cor=T))
+```
+
+```{r}
+X <- 
+```
+

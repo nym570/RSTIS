@@ -1,0 +1,329 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(CCA)
+library(candisc)
+library(ACSWR)
+data(chemicaldata)
+names(chemicaldata)
+chemicaldata
+```
+
+Digunakan dataset chemicaldata (Box and Youle 1955; Rencher2002) yang terdapat
+pada package ACSWR. Dataset chemicaldata berisi hasil eksperimen reaksi kimia,
+dimana dalam eksperimen ini variabel yang digunakan adalah :
+X1 = temperatur
+X2 = konsentrasi zat
+X3 = waktu
+Y1 = persentase material yang tidak berubah
+Y2 = persentase material yang berubah sesuai yang diharapkan
+Y3 = persentase material yang berubah tidak sesuai yang diharapkan
+
+```{r}
+# Standardisasi dulu
+data <- as.data.frame(scale(chemicaldata))
+col1 <- 4:6
+col2 <- 1:3
+
+data1 <- data[,col1]
+data2 <- data[,col2]
+
+p <- ncol(data1)
+q <- ncol(data2)
+n <- nrow(data)
+min.pq <- min(p,q)
+```
+
+Persebaran Data
+```{r}
+library(GGally)
+ggpairs(data1)
+ggpairs(data2)
+```
+
+Keterkaitan linier
+```{r}
+library(CCA)
+correl<-matcor(data1, data2)
+correl
+img.matcor(correl,type=2)
+```
+
+# Dengan Package candisc
+
+```{r}
+library(candisc)
+cc1 <- candisc::cancor(data1, data2) # Ada uji signifikansinya dan Summary dari Variat Kanoniknya
+summary(cc1)
+```
+
+Korelasi kanonik
+```{r}
+(rho <- cc1$cancor) # Korelasi kanonik
+```
+
+Koefisien dari Variat Kanonik
+```{r}
+cc1$coef
+```
+
+Koefisien dari Variat Kanonik yang distandardisasi
+(Jika data yang digunakan belum distandardisasi)
+```{r}
+V11.sqrt <- diag(sqrt(diag(cov(data1))))
+V22.sqrt <- diag(sqrt(diag(cov(data2))))
+
+V11.sqrt %*% cc1$coef$X
+V22.sqrt %*% cc1$coef$Y
+```
+
+Korelasi
+```{r}
+cc1$structure$X.xscores # Korelasi X dengan U
+cc1$structure$Y.yscores # Korelasi Y dengan V
+
+cc1$structure$X.yscores # Korelasi X dengan V
+cc1$structure$Y.xscores # Korelasi Y dengan U
+```
+
+Scores
+```{r}
+cc1$scores # Scores
+```
+
+# Dengan Package CCA
+
+Korelasi kanonik
+```{r}
+library(CCA)
+cc2 <- cc(data1, data2)
+
+(rho <- cc2$cor) # Korelasi Kanonik
+```
+
+Uji Signifikansi Korelasi Kanonik
+```{r}
+library(CCP)
+p.asym(rho, n, p, q, tstat = "Wilks")
+p.asym(rho, n, p, q, tstat = "Hotelling")
+p.asym(rho, n, p, q, tstat = "Pillai")
+p.asym(rho, n, p, q, tstat = "Roy")
+```
+
+Koefisien dari Variat Kanonik
+```{r}
+cc2[3:4]
+```
+
+Koefisien dari Variat Kanonik yang distandardisasi
+(Jika data yang digunakan belum distandardisasi)
+```{r}
+V11.sqrt <- diag(sqrt(diag(cov(data1))))
+V22.sqrt <- diag(sqrt(diag(cov(data2))))
+
+V11.sqrt %*% cc2$xcoef
+V22.sqrt %*% cc2$ycoef
+```
+
+Korelasi
+```{r}
+cc2$scores[c(3,6,5,4)] # Korelasi
+```
+
+Scores
+```{r}
+cc2$scores[1:2] # Scores
+```
+
+# Manual
+
+Matriks kovarians
+```{r}
+S11 <- cov(data1)
+S22 <- cov(data2)
+S12 <- cov(data1, data2)
+S21 <- cov(data2, data1)
+```
+
+Eigen
+```{r}
+# Function untuk mencari akar invers matriks
+sqrt_inv <- function(M) {
+  eig <- eigen(M)
+  result <- 1/sqrt(eig$values[1]) * eig$vectors[,1] %*% t(eig$vectors[,1])
+  for (i in 2:ncol(M)) {
+    result <- result + 1/sqrt(eig$values[i]) * eig$vectors[,i] %*% t(eig$vectors[,i])
+  }
+  result
+}
+
+S11.sqrt.inv <- sqrt_inv(S11)
+S22.sqrt.inv <- sqrt_inv(S22)
+
+# Cara lain
+library(expm)
+S11.sqrt.inv <- solve(sqrtm(S11))
+S22.sqrt.inv <- solve(sqrtm(S22))
+
+M1 <- S11.sqrt.inv%*%S12%*%solve(S22)%*%S21%*%S11.sqrt.inv
+M2 <- S22.sqrt.inv%*%S21%*%solve(S11)%*%S12%*%S22.sqrt.inv
+
+eig.M1 <- eigen(M1) # vektor eigennya disebut e
+eig.M2 <- eigen(M2) # vektor eigennya disebut f
+```
+
+Korelasi Kanonik
+```{r}
+sqrt(eig.M1$values)[1:min.pq]
+(rho <- sqrt(eig.M2$values)[1:min.pq])
+```
+
+Uji Signifikansi Korelasi Kanonik
+```{r}
+library(CCP)
+p.asym(rho, n, p, q, tstat = "Wilks")
+p.asym(rho, n, p, q, tstat = "Hotelling")
+p.asym(rho, n, p, q, tstat = "Pillai")
+p.asym(rho, n, p, q, tstat = "Roy")
+```
+
+Koefisien dari Variat Kanonik U
+```{r}
+a <- S11.sqrt.inv %*% eig.M1$vectors[,1:min.pq]
+rownames(a) <- colnames(data1)
+a
+```
+
+Koefisien dari Variat Kanonik V
+```{r}
+b <- S22.sqrt.inv %*% eig.M2$vectors[,1:min.pq]
+rownames(b) <- colnames(data2)
+b
+```
+
+Koefisien dari Variat Kanonik yang distandardisasi
+(Jika data yang digunakan belum distandardisasi)
+```{r}
+V11.sqrt <- diag(sqrt(diag(cov(data1))))
+V22.sqrt <- diag(sqrt(diag(cov(data2))))
+
+V11.sqrt %*% a
+V22.sqrt %*% b
+```
+
+Scores U (Nilai Variat Kanonik U)
+```{r}
+(U <- as.matrix(data1) %*% a)
+```
+
+Scores V (Nilai Variat Kanonik V)
+```{r}
+(V <- as.matrix(data2) %*% b)
+```
+
+Korelasi
+```{r}
+V11.sqrt.inv <- solve(diag(sqrt(diag(cov(data1)))))
+V22.sqrt.inv <- solve(diag(sqrt(diag(cov(data2)))))
+
+V11.sqrt.inv %*% S11 %*% a # Korelasi X dengan U
+V22.sqrt.inv %*% S22 %*% b # Korelasi Y dengan V
+
+V11.sqrt.inv %*% S12 %*% b # Korelasi X dengan V
+V22.sqrt.inv %*% S21 %*% a # Korelasi Y dengan U
+```
+
+Korelasi
+```{r}
+cor(data1, U) # Korelasi X dengan U
+cor(data2, V) # Korelasi Y dengan V
+
+cor(data1, V) # Korelasi X dengan V
+cor(data2, U) # Korelasi Y dengan U
+```
+
+#Penugasan
+Data Remote Sensing yang digunakan adalah :
+* Normalized Build-up Index (X1) 
+* Night light intensity (X2)
+Sedangkan data PODES yang digunakan adalah : 
+* Rasio keluarga Pertanian (Y1) 
+* Rasio keluarga pengguna listrik PLN (Y2). 
+
+Matriks kovarians
+```{r}
+xbar <- matrix(c(0.3,1),2,1)
+ybar <- matrix(c(0.4,0.9),2,1)
+R11 <- matrix(c(1,0.56,0.56,1),2,2)
+R12 <- matrix(c(0.68,0.55,0.72,0.58),2,2)
+R21 <- t(R12)
+R22 <- matrix(c(1,0.98,0.98,1),2,2)
+
+p <- 2
+q <- 2
+min.pq <- min(p,q)
+```
+
+Eigen
+```{r}
+# Function untuk mencari akar invers matriks
+sqrt_inv <- function(M) {
+  eig <- eigen(M)
+  result <- 1/sqrt(eig$values[1]) * eig$vectors[,1] %*% t(eig$vectors[,1])
+  for (i in 2:ncol(M)) {
+    result <- result + 1/sqrt(eig$values[i]) * eig$vectors[,i] %*% t(eig$vectors[,i])
+  }
+  result
+}
+
+R11.sqrt.inv <- sqrt_inv(R11)
+R22.sqrt.inv <- sqrt_inv(R22)
+
+# Cara lain
+library(expm)
+R11.sqrt.inv <- solve(sqrtm(R11))
+R22.sqrt.inv <- solve(sqrtm(R22))
+
+M1 <- R11.sqrt.inv%*%R12%*%solve(R22)%*%R21%*%R11.sqrt.inv
+M2 <- R22.sqrt.inv%*%R21%*%solve(R11)%*%R12%*%R22.sqrt.inv
+
+eig.M1 <- eigen(M1) # vektor eigennya disebut e
+eig.M2 <- eigen(M2) # vektor eigennya disebut f
+```
+
+Korelasi Kanonik
+```{r}
+sqrt(eig.M1$values)[1:min.pq]
+(rho <- sqrt(eig.M2$values)[1:min.pq])
+```
+
+Koefisien dari Variat Kanonik U
+```{r}
+a <- R11.sqrt.inv %*% eig.M1$vectors[,1:min.pq]
+dimnames(a) <- list(c("X1","X2"), c("U1","U2"))
+a
+```
+
+Koefisien dari Variat Kanonik V
+```{r}
+b <- R22.sqrt.inv %*% eig.M2$vectors[,1:min.pq]
+dimnames(b) <- list(c("Y1","Y2"), c("V1","V2"))
+b
+```
+
+Korelasi
+```{r}
+R11 %*% a # Korelasi X dengan U
+R22 %*% b # Korelasi Y dengan V
+
+R12 %*% b # Korelasi X dengan V
+R21 %*% a # Korelasi Y dengan U
+```
+
+
+
+

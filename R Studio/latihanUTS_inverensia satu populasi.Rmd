@@ -1,0 +1,180 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+#matriks kovarian tidak diketahui
+```{r}
+T.test <- function(X, mu=0,alpha){
+  X <- as.matrix(X)
+  n <- nrow(X)
+  p <- ncol(X)
+  df2 <- n - p
+  if(df2 < 1L) stop("Need nrow(X) > ncol(X).")
+  if(length(mu) != p) mu <- rep(mu[1], p)
+  xbar <- colMeans(X)
+  S <- cov(X)
+  T2 <- n * t(xbar - mu) %*% solve(S) %*% (xbar - mu)
+  Fstat <- T2 / (p * (n-1) / df2)
+  pval <- 1 - pf(Fstat, df1=p, df2=df2)
+  data.frame(T2=as.numeric(T2), Fstat=as.numeric(Fstat),
+  df1=p, df2=df2, p.value=as.numeric(pval), row.names="")
+}
+```
+
+```{r}
+data(mtcars)
+X <- mtcars[,c("mpg","disp","hp","wt")]
+X
+```
+
+```{r}
+xbar <- colMeans(X)
+xbar
+```
+
+```{r}
+mu <- c(20,200,150,3)
+T.test(X,mu)
+```
+
+```{r}
+n <- nrow(X)
+p <- ncol(X)
+alpha <- 0.05
+C2 <- (n - 1) * p * qf(1-alpha, df1=p, df2=n-p)/(n-p)
+C2
+```
+
+```{r}
+n <- nrow(X)
+p <- ncol(X)
+xbar <- colMeans(X)
+S <- cov(X)
+library(car)
+alpha<-0.05
+tconst <- sqrt((p/n)*((n-1)/(n-p)) * qf(1-alpha,p,n-p))
+id <- c(1,2)
+plot(ellipse(center=xbar[id], shape=S[id,id], radius=tconst, draw=F),type="n", xlab="mpg", ylab="disp")
+lines(ellipse(center=xbar[id], shape=S[id,id], radius=tconst, lwd=3), xlab="mpg", ylab="disp")
+points(20,200,col="red", pch=16)
+text(20.5,200,expression(mu[0]))
+text(xbar[1]+0.5,xbar[2],expression(bar(x)))
+```
+
+```{r}
+T.ci <- function(mu, Sigma, n, avec=rep(1,length(mu)),level=0.95){
+  p <- length(mu)
+  if(nrow(Sigma)!=p) stop("Need length(mu) == nrow(Sigma).")
+  if(ncol(Sigma)!=p) stop("Need length(mu) == ncol(Sigma).")
+  if(length(avec)!=p) stop("Need length(mu) == length(avec).")
+  if(level <=0 | level >= 1) stop("Need 0 < level < 1.")
+  cval <- qf(level, p, n-p) * p * (n-1) / (n-p)
+  zhat <- crossprod(avec, mu)
+  zvar <- crossprod(avec, Sigma %*% avec) / n
+  const <- sqrt(cval * zvar)
+  c(lower = zhat - const, upper = zhat + const)
+}
+```
+
+```{r}
+S<-cov(X)
+n <- nrow(X)
+p <- ncol(X)
+T.ci(mu=xbar, Sigma=S, n=n, avec=c(1,0,0,0)) #CI untuk mu_0 mpg
+T.ci(mu=xbar, Sigma=S, n=n, avec=c(0,1,0,0)) #CI untuk mu_0 disp
+T.ci(mu=xbar, Sigma=S, n=n, avec=c(0,0,1,0)) #CI untuk mu_0 hp
+T.ci(mu=xbar, Sigma=S, n=n, avec=c(0,0,0,1)) #CI untuk mu_0 wt
+```
+
+```{r}
+TCI <- tCI <- bon <- NULL
+alpha1<-1-0.05
+alpha2<-1-(0.05/2)
+alpha3 <- 1 - 0.05/(2*4)
+for(k in 1:4){
+  avec <- rep(0, 4)
+  avec[k] <- 1
+  TCI <- c(TCI, T.ci(xbar, S, n, avec,level=alpha1))
+  tCI <- c(tCI,
+  xbar[k] - sqrt(S[k,k]/n) * qt(alpha2, df=n-1),
+  xbar[k] + sqrt(S[k,k]/n) * qt(alpha2, df=n-1)) #CI t-univariate
+  bon <- c(bon,
+  xbar[k] - sqrt(S[k,k]/n) * qt(alpha3, df=n-1),
+  xbar[k] + sqrt(S[k,k]/n) * qt(alpha3, df=n-1)) #CI Bonferroni
+}
+rtab <- rbind(TCI, tCI, bon)
+round(rtab, 2)
+```
+
+
+#Sampel besar
+```{r}
+Z2.test <- function(X, mu=0, asymp=FALSE){
+  X <- as.matrix(X)
+  n <- nrow(X)
+  p <- ncol(X)
+  df2 <- n - p
+  if(df2 < 1L) stop("Need nrow(X) > ncol(X).")
+  if(length(mu) != p) mu <- rep(mu[1], p)
+  xbar <- colMeans(X)
+  S <- cov(X)
+  Z2 <- n * t(xbar - mu) %*% solve(S) %*% (xbar - mu)
+  Fstat <- Z2 / (p * (n-1) / df2)
+  if(asymp){
+    pval <- 1 - pchisq(Z2, df=p)
+  } else {
+    pval <- 1 - pf(Fstat, df1=p, df2=df2)
+  }
+  data.frame(Z2=as.numeric(Z2), Fstat=as.numeric(Fstat), df1=p, df2=df2, p.value=as.numeric(pval), asymp=asymp, row.names="")
+}
+```
+
+```{r}
+chi <- NULL
+for(k in 1:4){
+  chi <- c(chi,
+  xbar[k] - sqrt(S[k,k]/n) * sqrt(qchisq(0.95, df=p)),
+  xbar[k] + sqrt(S[k,k]/n) * sqrt(qchisq(0.95, df=p)))
+}
+```
+
+```{r}
+data(mtcars)
+X <- mtcars[,c("mpg","disp","hp","wt")]
+mu<-c(20,200,150,3)
+Z2.test(X, mu=mu,asymp=TRUE)
+```
+
+```{r}
+n <- nrow(X)
+p <- ncol(X)
+alpha <- 0.05
+C2 <- qchisq(1-alpha, df=p)
+C2
+```
+
+```{r}
+TCI <- tCI <- bon <- NULL
+alpha1<-1-0.05
+alpha2<-1-(0.05/2)
+alpha3 <- 1 - 0.05/(2*4)
+for(k in 1:4){
+  avec <- rep(0, 4)
+  avec[k] <- 1
+  TCI <- c(TCI, T.ci(xbar, S, n, avec,level=alpha1))
+  tCI <- c(tCI,
+  xbar[k] - sqrt(S[k,k]/n) * qt(alpha2, df=n-1),
+  xbar[k] + sqrt(S[k,k]/n) * qt(alpha2, df=n-1))
+  bon <- c(bon,
+  xbar[k] - sqrt(S[k,k]/n) * qt(alpha3, df=n-1),
+  xbar[k] + sqrt(S[k,k]/n) * qt(alpha3, df=n-1))
+  chi <- c(chi,
+  xbar[k] - sqrt(S[k,k]/n) * sqrt(qchisq(0.95, df=p)),
+  xbar[k] + sqrt(S[k,k]/n) * sqrt(qchisq(0.95, df=p)))
+}
+rtab <- rbind(TCI, tCI, bon,chi)
+round(rtab, 2)
+```
+
+

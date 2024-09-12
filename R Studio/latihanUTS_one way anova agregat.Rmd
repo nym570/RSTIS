@@ -1,0 +1,154 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+manova <- function(nL,xbarL,SL,alpha,method){
+  library(crayon)
+  p = nrow(xbarL[[1]])
+  g = length(nL)
+  n = sum(nL) #n total
+  W = matrix(rep(0,p*p),ncol=p) #sum square within/error
+  xbar = 0 
+  for(L in 1:g){
+    W = W + (nL[L]-1)*SL[[L]]
+    xbar = xbar + nL[[L]]*xbarL[[L]]
+  }
+  xbar = xbar/n #mean overall
+  S_pooled = W/(n-g)
+  B = matrix(rep(0,p*p),ncol=p,nrow=p) #sum square between/treatments
+  for(L in  1:g){
+    B = B + nL[[L]]*(xbarL[[L]]-xbar)%*%t((xbarL[[L]]-xbar))
+  }
+  Tot = B+W #sum square total
+  lambda = 0
+  if(tolower(method)=="wilks")
+    lambda = det(W)/det(Tot)
+  else if(tolower(method)=="hotellig-lawley" || tolower(method)=="lawley-hotelling")
+    lambda = sum(diag(B%*%solve(W)))
+  else if(tolower(method)=="pillai")
+    lambda = sum(diag(B%*%solve(B+W)))
+  else if(tolower(method)=="roy")
+    lambda = max(eigen(W%*%solve(B+W))$values)
+  else{
+    stop("The method not available")
+  }
+  sample_large = FALSE
+  for(L in 1:g){
+    if(nL[[L]]>5*p) sample_large = TRUE
+    else {
+      sample_large = FALSE
+      break
+    }
+  }
+  stat_uji = 0
+  nilai_kritis = 0
+  if(sample_large==TRUE){
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }else 
+    if(p==1 && g>=2){
+    stat_uji = (n-g)/(g-1)*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,g-1,n-g)
+  }else if(p==2 && g>=2){
+    stat_uji = (n-g-1)/(g-1)*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*(g-1),2*(n-g-1))
+  }else if(p>=1 && g==2){
+    stat_uji = (n-p-1)/p*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,p,n-p-1)
+  }else if(p>=1 && g==3){
+    stat_uji = (n-p-2)/p*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*p,2*(n-p-2))
+  }else{
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }
+  print(paste("n = ",n))
+  print(paste("g = ",g))
+  print(paste("p = ",p))
+  print("Mean Overall (xbar) = ")
+  print(xbar)
+  print("S pooled = ")
+  print(S_pooled)
+  print("Sum Square Error/Within (W) = ")
+  print(W)
+  print("Sum Square Treatments/Between (B) = ")
+  print(B)
+  print("Sum Square Total (T) = ")
+  print(Tot)
+  if(tolower(method)=="wilks")
+    print("Method : Wilks")
+  else if(tolower(method)=="hotelling-laylew" || tolower(method)=="lawley-hotelling")
+    print("Method : Hotelling-Lawley")
+  else if(tolower(method)=="pillai")
+    print("Method : Pillai")
+  else if(tolower(method)=="roy")
+    print("Method : Roy")
+  print(paste("Lambda = ",lambda))
+  if(sample_large){
+    print("This is large sample size")
+  }else{
+    print("This is small sample size")
+  }
+  print(paste("Test Statistics Value = ", stat_uji))
+  print(paste("Critical Value = ",nilai_kritis))
+  if(stat_uji>nilai_kritis){
+    print("Conclusion: Reject H0")
+  }else{
+    print("Conclusion: Not Reject H0")
+  }
+  for(i in 1:g){
+      if(i==g)
+          break
+      for(j in 1:p){
+        for(k in i+1:g){
+          if(k>g)
+            next
+          print(paste("CI of mean(group",i,", variable",j,") - mean(group",k,", variable",j,")"))
+          lower = xbarL[[i]][j]-xbarL[[k]][j]-qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          upper = xbarL[[i]][j]-xbarL[[k]][j]+qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          print(paste(">> Lower = ",lower))
+          print(paste(">> Upper = ",upper))
+          if(!(lower<0 && upper>0))
+            cat(yellow("Note: This causes reject H0, signifikan"),"\n")
+          print("=========================")
+        }
+      }
+    }
+}
+```
+
+```{r}
+n1 = 15
+n2 = 17
+n3 = 18
+n4 = 20
+n5 = 20
+nl = c(n1,n2,n3,n4,n5)
+xbar1 = matrix(c(21650,39,93640),3,1)
+xbar2 = matrix(c(20130,43,89560),3,1)
+xbar3 = matrix(c(22170,41,95560),3,1)
+xbar4 = matrix(c(16250,35,96640),3,1)
+xbar5 = matrix(c(19860,44,92620),3,1)
+xbarl = list(xbar1,xbar2,xbar3,xbar4,xbar5)
+D1 = diag(c(sqrt(1250),sqrt(14),sqrt(12740)))
+R1 = matrix(c(1,-0.65,0.34,-0.65,1,0.42,0.34,0.42,1),3,3,byrow=TRUE)
+S1 = D1%*%R1%*%D1
+S1
+D2 = diag(c(sqrt(1190),sqrt(11),sqrt(13100)))
+R2 = matrix(c(1,-0.55,0.42,-0.55,1,0.45,0.42,0.44,1),3,3,byrow=TRUE)
+S2 = D2%*%R2%*%D2
+D3 = diag(c(sqrt(1310),sqrt(12),sqrt(12100)))
+R3 = matrix(c(1,-0.65,0.34,-0.65,1,0.42,0.34,0.42,1),3,3,byrow=TRUE)
+S3 = D3%*%R3%*%D3
+D4 = diag(c(sqrt(1210),sqrt(13),sqrt(12640)))
+R4 = matrix(c(1,-0.66,0.38,-0.66,1,0.41,0.38,0.41,1),3,3,byrow=TRUE)
+S4 = D4%*%R4%*%D4
+D5 = diag(c(sqrt(1336),sqrt(15),sqrt(12290)))
+R5 = matrix(c(1,-0.59,0.43,-0.59,1,0.46,0.43,0.46,1),3,3,byrow=TRUE)
+S5 = D5%*%R5%*%D5
+Sl = list(S1,S2,S3,S4,S5)
+manova(nl,xbarl,Sl,0.05,"wilks")
+```
+

@@ -1,0 +1,1048 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+#2014/2015 
+1a
+```{r}
+X1 <- c(6,3,7,4,5,2,4,4)
+X2 <- c(9,7,9,8,8,5,7,6)
+Y1 <- c(4,2,5,3,3,1,2,3)
+Y2 <- c(6,5,7,6,7,3,5,4)
+K1 <- cbind(X1,X2)
+K2 <- cbind(Y1,Y2)
+
+
+Xbar1 <- colMeans(K1)
+Xbar2 <- colMeans(K2)
+Cov1 <- cov(K1)
+Cov2 <- cov(K2)
+A <- matrix(Cov1,2,2)
+ev1 <- eigen(A)
+Qx11 <- t(ev1$vectors[1,])%*%A%*%ev1$vectors[1,]
+Qx11
+Qx12 <- t(ev1$vectors[2,])%*%A%*%ev1$vectors[2,]
+Qx12
+B <- matrix(Cov2,2,2)
+ev2 <- eigen(B)
+Qx21 <- t(ev2$vectors[1,])%*%A%*%ev2$vectors[1,]
+Qx21
+Qx22 <- t(ev2$vectors[2,])%*%A%*%ev2$vectors[2,]
+Qx22
+```
+1b
+```{r}
+det(Cov1)
+det(Cov2)
+```
+1c
+```{r}
+library(DescTools)
+library(asbio)
+colnames(K2) = c("X1","X2")
+K <- rbind(K1,K2)
+n1 <- length(X1)
+n2 <- length(Y1)
+f =factor(c(rep(1,n1),rep(2,n2)))
+Kullback(K,f)
+```
+```{r}
+p <- ncol(K1)
+f1.n <- n1
+f1.xbar <- colMeans(K1)
+f1.cov <- cov(K1)
+f2.n <- n2
+f2.xbar <- colMeans(K2)
+f2.cov <- cov(K2)
+
+s_pool <- ((f1.n-1)*f1.cov+(f2.n-1)*f2.cov)/(f1.n+f2.n-2)
+T2 <- t(f1.xbar-f2.xbar)%*%solve((1/f1.n+1/f2.n)*s_pool)%*%(f1.xbar-f2.xbar)
+cat("Nilai statistik uji T^2\n", T2) 
+nilai.F <- qf((1-0.05), p, f1.n + f2.n - p - 1)
+c2 <- (((f1.n + f2.n - 2)/(f1.n + f2.n - p - 1) * p)) * nilai.F
+cat("\n\nNilai c^2\n", c2)
+```
+```{r}
+bon <- NULL
+xbar <- f1.xbar - f2.xbar
+alpha3 <- 1 - 0.05/(2*p)
+for(k in 1:p){
+  bon <- c(bon,
+  xbar[k] - sqrt((1/f1.n+1/f2.n)*s_pool[k,k]) * qt(alpha3, df=f1.n+f2.n-2),
+   xbar[k] + sqrt((1/f1.n+1/f2.n)*s_pool[k,k]) * qt(alpha3, df=f1.n+f2.n-2)) #CI Bonferroni
+}
+bon
+```
+
+
+2a
+```{r}
+library(readxl)
+data<-read_excel("C:/Users/lili/Downloads/data2014-2015_2.xlsx")
+data$Merek <- as.factor(data$Merek)
+data
+```
+```{r}
+mshapiro.test(data[1:10,-3])
+mshapiro.test(data[11:20,-3])
+mshapiro.test(data[21:32,-3])
+boxM(data[,-3],data$Merek)
+```
+```{r}
+manova <- function(nL,xbarL,SL,alpha,method){
+  library(crayon)
+  p = nrow(xbarL[[1]])
+  g = length(nL)
+  n = sum(nL) #n total
+  W = matrix(rep(0,p*p),ncol=p) #sum square within/error
+  xbar = 0 
+  for(L in 1:g){
+    W = W + (nL[L]-1)*SL[[L]]
+    xbar = xbar + nL[[L]]*xbarL[[L]]
+  }
+  xbar = xbar/n #mean overall
+  S_pooled = W/(n-g)
+  B = matrix(rep(0,p*p),ncol=p,nrow=p) #sum square between/treatments
+  for(L in  1:g){
+    B = B + nL[[L]]*(xbarL[[L]]-xbar)%*%t((xbarL[[L]]-xbar))
+  }
+  Tot = B+W #sum square total
+  lambda = 0
+  if(tolower(method)=="wilks")
+    lambda = det(W)/det(Tot)
+  else if(tolower(method)=="hotellig-lawley" || tolower(method)=="lawley-hotelling")
+    lambda = sum(diag(B%*%solve(W)))
+  else if(tolower(method)=="pillai")
+    lambda = sum(diag(B%*%solve(B+W)))
+  else if(tolower(method)=="roy")
+    lambda = max(eigen(W%*%solve(B+W))$values)
+  else{
+    stop("The method not available")
+  }
+  sample_large = FALSE
+  for(L in 1:g){
+    if(nL[[L]]>5*p) sample_large = TRUE
+    else {
+      sample_large = FALSE
+      break
+    }
+  }
+  stat_uji = 0
+  nilai_kritis = 0
+  if(sample_large==TRUE){
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }else 
+    if(p==1 && g>=2){
+    stat_uji = (n-g)/(g-1)*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,g-1,n-g)
+  }else if(p==2 && g>=2){
+    stat_uji = (n-g-1)/(g-1)*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*(g-1),2*(n-g-1))
+  }else if(p>=1 && g==2){
+    stat_uji = (n-p-1)/p*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,p,n-p-1)
+  }else if(p>=1 && g==3){
+    stat_uji = (n-p-2)/p*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*p,2*(n-p-2))
+  }else{
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }
+  print(paste("n = ",n))
+  print(paste("g = ",g))
+  print(paste("p = ",p))
+  print("Mean Overall (xbar) = ")
+  print(xbar)
+  print("S pooled = ")
+  print(S_pooled)
+  print("Sum Square Error/Within (W) = ")
+  print(W)
+  print("Sum Square Treatments/Between (B) = ")
+  print(B)
+  print("Sum Square Total (T) = ")
+  print(Tot)
+  if(tolower(method)=="wilks")
+    print("Method : Wilks")
+  else if(tolower(method)=="hotelling-laylew" || tolower(method)=="lawley-hotelling")
+    print("Method : Hotelling-Lawley")
+  else if(tolower(method)=="pillai")
+    print("Method : Pillai")
+  else if(tolower(method)=="roy")
+    print("Method : Roy")
+  print(paste("Lambda = ",lambda))
+  if(sample_large){
+    print("This is large sample size")
+  }else{
+    print("This is small sample size")
+  }
+  print(paste("Test Statistics Value = ", stat_uji))
+  print(paste("Critical Value = ",nilai_kritis))
+  if(stat_uji>nilai_kritis){
+    print("Conclusion: Reject H0")
+  }else{
+    print("Conclusion: Not Reject H0")
+  }
+  for(i in 1:g){
+      if(i==g)
+          break
+      for(j in 1:p){
+        for(k in i+1:g){
+          if(k>g)
+            next
+          print(paste("CI of mean(group",i,", variable",j,") - mean(group",k,", variable",j,")"))
+          lower = xbarL[[i]][j]-xbarL[[k]][j]-qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          upper = xbarL[[i]][j]-xbarL[[k]][j]+qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          print(paste(">> Lower = ",lower))
+          print(paste(">> Upper = ",upper))
+          if(!(lower<0 && upper>0))
+            cat(yellow("Note: This causes reject H0, signifikan"),"\n")
+          print("=========================")
+        }
+      }
+    }
+}
+```
+
+```{r}
+g = 3
+p = 2
+n1 = 10
+n2 = 10
+n3 = 12
+nl = c(n1,n2,n3)
+xbar1 = matrix(colMeans(data[1:10,-3]),p,1)
+xbar2 = matrix(colMeans(data[11:20,-3]),p,1)
+xbar3 = matrix(colMeans(data[21:32,-3]),p,1)
+xbarl = list(xbar1,xbar2,xbar3)
+S1 = matrix(cov(data[1:10,-3]),p,p)
+S2 = matrix(cov(data[11:20,-3]),p,p)
+S3 = matrix(cov(data[21:32,-3]),p,p)
+Sl = list(S1,S2,S3)
+manova(nl,xbarl,Sl,0.05,"wilks")
+```
+
+#2015/2016
+1b
+```{r}
+xbar1 <- c(2.287,12.6,0.347)
+S1 <- matrix(c(0.287,0.859,-0.087,0.859,3.839,-0.332,-0.087,-0.332,0.069),3,3,byrow = TRUE)
+xbar2 <- c(2.4,7.16,0.52)
+S2 <- matrix(c(0.418,-1.295,0.187,-1.295,10.351,-0.69,0.187,-0.69,0.097),3,3,byrow=TRUE)
+```
+
+```{r}
+p <- 3
+f1.n <- 20
+f1.xbar <- xbar1
+f1.cov <- S1
+f2.n <- 20
+f2.xbar <- xbar2
+f2.cov <- S2
+
+s_pool <- ((f1.n-1)*f1.cov+(f2.n-1)*f2.cov)/(f1.n+f2.n-2)
+T2 <- t(f1.xbar-f2.xbar)%*%solve((1/f1.n+1/f2.n)*s_pool)%*%(f1.xbar-f2.xbar)
+cat("Nilai statistik uji T^2\n", T2) 
+nilai.F <- qf((1-0.05), p, f1.n + f2.n - p - 1)
+c2 <- (((f1.n + f2.n - 2)/(f1.n + f2.n - p - 1) * p)) * nilai.F
+cat("\n\nNilai c^2\n", c2)
+```
+```{r}
+bon <- NULL
+xbar <- f1.xbar - f2.xbar
+alpha3 <- 1 - 0.05/(2*p)
+for(k in 1:p){
+  bon <- c(bon,
+  xbar[k] - sqrt((1/f1.n+1/f2.n)*s_pool[k,k]) * qt(alpha3, df=f1.n+f2.n-2),
+   xbar[k] + sqrt((1/f1.n+1/f2.n)*s_pool[k,k]) * qt(alpha3, df=f1.n+f2.n-2)) #CI Bonferroni
+}
+bon
+```
+
+```{r}
+library(readxl)
+data <- read_excel("C:/Users/lili/Downloads/data2015-2016_2.xlsx")
+data$Wilayah<-as.factor(data$Wilayah)
+data
+```
+```{r}
+manova <- function(nL,xbarL,SL,alpha,method){
+  library(crayon)
+  p = nrow(xbarL[[1]])
+  g = length(nL)
+  n = sum(nL) #n total
+  W = matrix(rep(0,p*p),ncol=p) #sum square within/error
+  xbar = 0 
+  for(L in 1:g){
+    W = W + (nL[L]-1)*SL[[L]]
+    xbar = xbar + nL[[L]]*xbarL[[L]]
+  }
+  xbar = xbar/n #mean overall
+  S_pooled = W/(n-g)
+  B = matrix(rep(0,p*p),ncol=p,nrow=p) #sum square between/treatments
+  for(L in  1:g){
+    B = B + nL[[L]]*(xbarL[[L]]-xbar)%*%t((xbarL[[L]]-xbar))
+  }
+  Tot = B+W #sum square total
+  lambda = 0
+  if(tolower(method)=="wilks")
+    lambda = det(W)/det(Tot)
+  else if(tolower(method)=="hotellig-lawley" || tolower(method)=="lawley-hotelling")
+    lambda = sum(diag(B%*%solve(W)))
+  else if(tolower(method)=="pillai")
+    lambda = sum(diag(B%*%solve(B+W)))
+  else if(tolower(method)=="roy")
+    lambda = max(eigen(W%*%solve(B+W))$values)
+  else{
+    stop("The method not available")
+  }
+  sample_large = FALSE
+  for(L in 1:g){
+    if(nL[[L]]>5*p) sample_large = TRUE
+    else {
+      sample_large = FALSE
+      break
+    }
+  }
+  stat_uji = 0
+  nilai_kritis = 0
+  if(sample_large==TRUE){
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }else 
+    if(p==1 && g>=2){
+    stat_uji = (n-g)/(g-1)*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,g-1,n-g)
+  }else if(p==2 && g>=2){
+    stat_uji = (n-g-1)/(g-1)*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*(g-1),2*(n-g-1))
+  }else if(p>=1 && g==2){
+    stat_uji = (n-p-1)/p*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,p,n-p-1)
+  }else if(p>=1 && g==3){
+    stat_uji = (n-p-2)/p*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*p,2*(n-p-2))
+  }else{
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }
+  print(paste("n = ",n))
+  print(paste("g = ",g))
+  print(paste("p = ",p))
+  print("Mean Overall (xbar) = ")
+  print(xbar)
+  print("S pooled = ")
+  print(S_pooled)
+  print("Sum Square Error/Within (W) = ")
+  print(W)
+  print("Sum Square Treatments/Between (B) = ")
+  print(B)
+  print("Sum Square Total (T) = ")
+  print(Tot)
+  if(tolower(method)=="wilks")
+    print("Method : Wilks")
+  else if(tolower(method)=="hotelling-laylew" || tolower(method)=="lawley-hotelling")
+    print("Method : Hotelling-Lawley")
+  else if(tolower(method)=="pillai")
+    print("Method : Pillai")
+  else if(tolower(method)=="roy")
+    print("Method : Roy")
+  print(paste("Lambda = ",lambda))
+  if(sample_large){
+    print("This is large sample size")
+  }else{
+    print("This is small sample size")
+  }
+  print(paste("Test Statistics Value = ", stat_uji))
+  print(paste("Critical Value = ",nilai_kritis))
+  if(stat_uji>nilai_kritis){
+    print("Conclusion: Reject H0")
+  }else{
+    print("Conclusion: Not Reject H0")
+  }
+  for(i in 1:g){
+      if(i==g)
+          break
+      for(j in 1:p){
+        for(k in i+1:g){
+          if(k>g)
+            next
+          print(paste("CI of mean(group",i,", variable",j,") - mean(group",k,", variable",j,")"))
+          lower = xbarL[[i]][j]-xbarL[[k]][j]-qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          upper = xbarL[[i]][j]-xbarL[[k]][j]+qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          print(paste(">> Lower = ",lower))
+          print(paste(">> Upper = ",upper))
+          if(!(lower<0 && upper>0))
+            cat(yellow("Note: This causes reject H0, signifikan"),"\n")
+          print("=========================")
+        }
+      }
+    }
+}
+```
+
+```{r}
+mshapiro.test(data[1:16,-4])
+mshapiro.test(data[17:29,-4])
+mshapiro.test(data[30:33,-4])
+boxM(data[,-4],data$Wilayah)
+```
+
+```{r}
+g = 3
+p = 3
+n1 = 16
+n2 = 13
+n3 = 4
+nl = c(n1,n2,n3)
+xbar1 = matrix(colMeans(data[1:16,-4]),p,1)
+xbar2 = matrix(colMeans(data[17:29,-4]),p,1)
+xbar3 = matrix(colMeans(data[30:33,-4]),p,1)
+xbarl = list(xbar1,xbar2,xbar3)
+S1 = matrix(cov(data[1:16,-4]),p,p)
+S2 = matrix(cov(data[17:29,-4]),p,p)
+S3 = matrix(cov(data[30:33,-4]),p,p)
+Sl = list(S1,S2,S3)
+manova(nl,xbarl,Sl,0.05,"wilks")
+```
+
+#2018/2019
+1a
+```{r}
+xbar <- c(5.359273,6.953631)
+eigen <- c(14.26768,6.390188)
+vec <- matrix(c(-0.1045187,0.9945229,-0.9945229,-0.1045187),2,2,byrow = TRUE)
+S <- vec%*%diag(eigen)%*%solve(vec)
+det(S)
+```
+2
+```{r}
+n1 <- 50
+n2 <- 55
+xbar1 <- c(3,9,5)
+xbar2 <- c(4,10,4)
+S1 <- matrix(c(3,1.8,1.5,1.8,6,2.1,1.5,2.1,4),3,3,byrow=TRUE)
+S2 <- matrix(c(2.5,1,1.2,1,5,2,1.2,2,3.5),3,3,byrow=TRUE)
+```
+
+```{r}
+p <- 3
+f1.n <- n1
+f1.xbar <- xbar1
+f1.cov <- S1
+f2.n <- n2
+f2.xbar <- xbar2
+f2.cov <- S2
+
+s_pool <- ((f1.n-1)*f1.cov+(f2.n-1)*f2.cov)/(f1.n+f2.n-2)
+s_pool
+T2 <- t(f1.xbar-f2.xbar)%*%solve((1/f1.n+1/f2.n)*s_pool)%*%(f1.xbar-f2.xbar)
+cat("Nilai statistik uji T^2\n", T2) 
+nilai.F <- qf((1-0.05), p, f1.n + f2.n - p - 1)
+c2 <- (((f1.n + f2.n - 2)/(f1.n + f2.n - p - 1) * p)) * nilai.F
+cat("\n\nNilai c^2\n", c2)
+```
+
+```{r}
+bon <- NULL
+xbar <- f1.xbar - f2.xbar
+alpha3 <- 1 - 0.05/(2*p)
+for(k in 1:p){
+  bon <- c(bon,
+  xbar[k] - sqrt((1/f1.n+1/f2.n)*s_pool[k,k]) * qt(alpha3, df=f1.n+f2.n-2),
+   xbar[k] + sqrt((1/f1.n+1/f2.n)*s_pool[k,k]) * qt(alpha3, df=f1.n+f2.n-2)) #CI Bonferroni
+}
+bon
+```
+
+#2019/2020
+1a
+```{r}
+n <- 20
+p <- 2
+mu <- c(4.64,9.965)
+eig <- c(5.100851,1.406176)
+vec <- matrix(c(-0.6314539,-0.7754134,0.7754134,-0.6314539),2,2,byrow=TRUE)
+a <- vec%*%diag(eig)%*%t(vec)
+elips_eq <- function(X,mu,sig,p,alpha){
+  cek <- t(X-mu)%*%solve(sig)%*%(X-mu)
+  ifelse(cek <= qchisq(1-alpha,p),"titik di dalam elips","titik di luar elips")
+}
+X <- c(4,10)
+elips_eq(X,mu,a,2,0.1)
+```
+
+```{r}
+df2 <- n - p
+  T2 <- n * t(mu - X) %*% solve(a) %*% (mu - X)
+  Fstat <- T2 / (p * (n-1) / df2)
+  pval <- 1 - pf(Fstat, df1=p, df2=df2)
+  C2 <- (n - 1) * p * qf(1-0.1, df1=p, df2=n-p)/(n-p)
+  data.frame(T2=as.numeric(T2), C2=as.numeric(C2), Fstat=as.numeric(Fstat),
+  df1=p, df2=df2, p.value=as.numeric(pval), row.names="")
+```
+
+```{r}
+bon <- NULL
+alpha3 <- 1 - 0.1/(2*p)
+for(k in 1:p){
+  bon <- c(bon,
+  xbar[k] - sqrt(S[k,k]/n) * qt(alpha3, df=n-1),
+  xbar[k] + sqrt(S[k,k]/n) * qt(alpha3, df=n-1)) #CI Bonferroni
+}
+bon
+```
+2
+```{r}
+C <- matrix(c(1,1,-1,-1,1,-1,1,-1,1,-1,-1,1),3,4,byrow=TRUE)
+R <- matrix(c(1,0.75,0.727,0.588,0.75,1,0.629,0.05,0.727,0.629,1,0.684,0.588,0.05,0.684,1),4,4,byrow=TRUE)
+xbar <- c(3.23,3.22,3.12,3.11)
+D <- diag(c(0.251,0.149,0.254,0.141))
+S <- D%*%R%*%D
+```
+
+```{r}
+n <-100
+p <- 4
+matriks=C
+xbar1=matrix(xbar,p,1)
+sigs=S
+T2=n*(t(matriks%*%xbar1))%*%solve(matriks%*%sigs%*%(t(matriks)))%*%(matriks%*%xbar1)
+df2<- n-(p-1)
+Fstat <- T2 / ((p-1) * (n-1) / df2)
+pval <- 1 - pf(Fstat, df1=p, df2=df2)
+C2 <- (n - 1) * (p-1) * qf(1-0.05, df1=p-1, df2=n-(p-1))
+data.frame(T2=as.numeric(T2), C2=as.numeric(C2), Fstat=as.numeric(Fstat),df1=p-1, df2=df2, p.value=as.numeric(pval), row.names="")
+```
+```{r}
+UjiRepeatedPre <- function(n, q, xbar, dsq, R, C, alpha = 0.05) {
+
+  S <- dsq%*%R%*%dsq
+  
+  T2 <- n * (t(C %*% xbar)) %*% solve(C %*% S %*% (t(C))) %*% (C %*% xbar)
+  Fstat <- T2 / ((n - 1)*(q - 1)/(n - q + 1))
+  Fcrit <- qf(1 - alpha, q - 1, n - q + 1)
+  Tcrit <- (n - 1) * (q - 1) / (n - q + 1) * Fcrit
+  pval <- 1 - pf(Fstat, q - 1, n - q + 1)
+  summary <- data.frame(T2, Tcrit, Fstat, Fcrit, df1 = q - 1, df2 = n - q + 1, pval)
+  
+  TCI <- tCI <- bon <- NULL
+  alpha1 <- 1 - 0.05
+  alpha2 <- 1 - (0.05/2)
+  alpha3 <- 1 - 0.05/(2*(q-1))
+  for (k in 1:nrow(C)) {
+    c <- C[k,]
+    
+    TCI <- c(TCI,
+             t(c)%*%xbar - sqrt(t(c)%*%S%*%c/n) * sqrt(Tcrit),
+             t(c)%*%xbar + sqrt(t(c)%*%S%*%c/n) * sqrt(Tcrit)) # CI simultan
+    tCI <- c(tCI,
+             t(c)%*%xbar - sqrt(t(c)%*%S%*%c/n) * qt(alpha2, df=n-1),
+             t(c)%*%xbar + sqrt(t(c)%*%S%*%c/n) * qt(alpha2, df=n-1)) #CI t-univariate
+    bon <- c(bon,
+             t(c)%*%xbar - sqrt(t(c)%*%S%*%c/n) * qt(alpha3, df=n-1),
+             t(c)%*%xbar + sqrt(t(c)%*%S%*%c/n) * qt(alpha3, df=n-1)) #CI Bonferroni
+  }
+  
+  rtab <- rbind(TCI, tCI, bon)
+  
+  return(list(summary, rtab))
+}
+UjiRepeatedPre(n,p,xbar,D,R,C)
+```
+
+3
+```{r}
+xbar1 <- matrix(c(21650,39,93640),3,1)
+xbar2 <- matrix(c(20130,43,89560),3,1)
+xbar3 <- matrix(c(22170,41,95560),3,1)
+xbar4 <- matrix(c(16250,35,96640),3,1)
+xbar5 <- matrix(c(19860,44,92620),3,1)
+D1 <- diag(c(1250,14,12740))
+D2 <- diag(c(1190,11,13100))
+D3 <- diag(c(1310,12,12100))
+D4 <- diag(c(1210,13,12640))
+D5 <- diag(c(1336,15,12290))
+R1 <- matrix(c(1,-0.65,0.34,-0.65,1,0.42,0.34,0.42,1),3,3,byrow=TRUE)
+R2 <- matrix(c(1,-0.65,0.34,-0.65,1,0.42,0.34,0.42,1),3,3,byrow=TRUE)
+R3 <- matrix(c(1,-0.59,0.43,-0.59,1,0.46,0.43,0.46,1),3,3,byrow=TRUE)
+R4 <- matrix(c(1,-0.55,0.42,-0.55,1,0.45,0.42,0.45,1),3,3,byrow=TRUE)
+R5 <- matrix(c(1,-0.66,0.38,-0.66,1,0.41,0.38,0.41,1),3,3,byrow=TRUE)
+S1 <- D1%*%R1%*%D1
+S2 <- D2%*%R2%*%D2
+S3 <- D3%*%R3%*%D3
+S4 <- D4%*%R4%*%D4
+S5 <- D5%*%R5%*%D5
+```
+
+```{r}
+manova <- function(nL,xbarL,SL,alpha,method){
+  library(crayon)
+  p = nrow(xbarL[[1]])
+  g = length(nL)
+  n = sum(nL) #n total
+  W = matrix(rep(0,p*p),ncol=p) #sum square within/error
+  xbar = 0 
+  for(L in 1:g){
+    W = W + (nL[L]-1)*SL[[L]]
+    xbar = xbar + nL[[L]]*xbarL[[L]]
+  }
+  xbar = xbar/n #mean overall
+  S_pooled = W/(n-g)
+  B = matrix(rep(0,p*p),ncol=p,nrow=p) #sum square between/treatments
+  for(L in  1:g){
+    B = B + nL[[L]]*(xbarL[[L]]-xbar)%*%t((xbarL[[L]]-xbar))
+  }
+  Tot = B+W #sum square total
+  lambda = 0
+  if(tolower(method)=="wilks")
+    lambda = det(W)/det(Tot)
+  else if(tolower(method)=="hotellig-lawley" || tolower(method)=="lawley-hotelling")
+    lambda = sum(diag(B%*%solve(W)))
+  else if(tolower(method)=="pillai")
+    lambda = sum(diag(B%*%solve(B+W)))
+  else if(tolower(method)=="roy")
+    lambda = max(eigen(W%*%solve(B+W))$values)
+  else{
+    stop("The method not available")
+  }
+  sample_large = FALSE
+  for(L in 1:g){
+    if(nL[[L]]>5*p) sample_large = TRUE
+    else {
+      sample_large = FALSE
+      break
+    }
+  }
+  stat_uji = 0
+  nilai_kritis = 0
+  if(sample_large==TRUE){
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }else 
+    if(p==1 && g>=2){
+    stat_uji = (n-g)/(g-1)*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,g-1,n-g)
+  }else if(p==2 && g>=2){
+    stat_uji = (n-g-1)/(g-1)*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*(g-1),2*(n-g-1))
+  }else if(p>=1 && g==2){
+    stat_uji = (n-p-1)/p*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,p,n-p-1)
+  }else if(p>=1 && g==3){
+    stat_uji = (n-p-2)/p*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*p,2*(n-p-2))
+  }else{
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }
+  print(paste("n = ",n))
+  print(paste("g = ",g))
+  print(paste("p = ",p))
+  print("Mean Overall (xbar) = ")
+  print(xbar)
+  print("S pooled = ")
+  print(S_pooled)
+  print("Sum Square Error/Within (W) = ")
+  print(W)
+  print("Sum Square Treatments/Between (B) = ")
+  print(B)
+  print("Sum Square Total (T) = ")
+  print(Tot)
+  if(tolower(method)=="wilks")
+    print("Method : Wilks")
+  else if(tolower(method)=="hotelling-laylew" || tolower(method)=="lawley-hotelling")
+    print("Method : Hotelling-Lawley")
+  else if(tolower(method)=="pillai")
+    print("Method : Pillai")
+  else if(tolower(method)=="roy")
+    print("Method : Roy")
+  print(paste("Lambda = ",lambda))
+  if(sample_large){
+    print("This is large sample size")
+  }else{
+    print("This is small sample size")
+  }
+  print(paste("Test Statistics Value = ", stat_uji))
+  print(paste("Critical Value = ",nilai_kritis))
+  if(stat_uji>nilai_kritis){
+    print("Conclusion: Reject H0")
+  }else{
+    print("Conclusion: Not Reject H0")
+  }
+  for(i in 1:g){
+      if(i==g)
+          break
+      for(j in 1:p){
+        for(k in i+1:g){
+          if(k>g)
+            next
+          print(paste("CI of mean(group",i,", variable",j,") - mean(group",k,", variable",j,")"))
+          lower = xbarL[[i]][j]-xbarL[[k]][j]-qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          upper = xbarL[[i]][j]-xbarL[[k]][j]+qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          print(paste(">> Lower = ",lower))
+          print(paste(">> Upper = ",upper))
+          if(!(lower<0 && upper>0))
+            cat(yellow("Note: This causes reject H0, signifikan"),"\n")
+          print("=========================")
+        }
+      }
+    }
+}
+```
+
+```{r}
+g = 5
+p = 3
+n1 = 15
+n2 = 17
+n3 = 18
+n4 = 20
+n5 = 20
+nl = c(n1,n2,n3,n4,n5)
+xbarl = list(xbar1,xbar2,xbar3,xbar4,xbar5)
+S1 = matrix(S1,p,p)
+S2 = matrix(S2,p,p)
+S3 = matrix(S3,p,p)
+S4 = matrix(S4,p,p)
+S5 = matrix(S5,p,p)
+Sl = list(S1,S2,S3,S4,S5)
+manova(nl,xbarl,Sl,0.05,"wilks")
+```
+
+#2017/2018
+1
+```{r}
+n <- 120
+p <- 2
+xbar <- c(9.5,7)
+D <- diag(c(6,5))
+R <- matrix(c(1,0.33,1,0.33),2,2,byrow=TRUE)
+S <- D%*%R%*%D
+det(S)
+
+chi <- NULL
+for(k in 1:p){
+  chi <- c(chi, xbar[k] - sqrt(S[k,k]/n) * sqrt(qchisq(0.95, df=p)),xbar[k] + sqrt(S[k,k]/n) * sqrt(qchisq(0.95, df=p)))
+}
+round(chi,3)
+```
+
+#2018/2019
+1
+```{r}
+library(readxl)
+data <- read_excel("C:/Users/lili/Downloads/data2017-2018_1.xlsx")
+data$Jenis <- as.factor(data$Jenis)
+data$Fuel <- as.factor(data$Fuel)
+data
+```
+```{r}
+library(biotools)
+library(RVAideMemoire)
+X <- as.matrix(data[,1:2])
+mod <- manova(X~Jenis*Fuel,data = data)
+summary(mod,test="Wilks")
+```
+```{r}
+library(dplyr)
+xbarTotal <- matrix(colMeans(data[,1:2]),ncol=1)
+xbarTotal
+
+test <- data %>% filter(Jenis=='A') %>% dplyr::select(Efisiensi,Akselerasi)
+xbar.1 <- matrix(colMeans(test),ncol=1)
+
+test <- data %>% filter(Jenis=='B') %>% dplyr::select(Efisiensi,Akselerasi)
+xbar.2 <- matrix(colMeans(test),ncol=1)
+xbar.2
+
+xbarcol <- list(xbar.1,xbar.2)
+xbarcol[[1]]
+
+test <- data %>% filter(Fuel=='Dengan') %>% dplyr::select(Efisiensi,Akselerasi) 
+xbar1. <- matrix(colMeans(test),ncol=1)
+xbar1.
+test <- data %>% filter(Fuel=='Tanpa') %>% dplyr::select(Efisiensi,Akselerasi) 
+xbar2. <- matrix(colMeans(test),ncol=1)
+xbar2.
+xbarrow <- list(xbar1.,xbar2.)
+
+test <- data %>% filter((Jenis=='A')&(Fuel=='Dengan')) %>% dplyr::select(Efisiensi,Akselerasi) 
+xbar11 <- matrix(colMeans(test),ncol=1)
+xbar11
+S11 <- cov(test)
+
+test <- data %>% filter((Jenis=='A')&(Fuel=='Tanpa')) %>% dplyr::select(Efisiensi,Akselerasi)
+xbar12 <- matrix(colMeans(test),ncol=1)
+xbar12
+S12 <- cov(test)
+
+test <- data %>% filter((Jenis=='B')&(Fuel=='Dengan')) %>% dplyr::select(Efisiensi,Akselerasi)
+xbar21 <- matrix(colMeans(test),ncol=1)
+xbar21
+S21 <- cov(test)
+
+test <- data %>% filter((Jenis=='B')&(Fuel=='Tanpa')) %>% dplyr::select(Efisiensi,Akselerasi)
+xbar22 <- matrix(colMeans(test),ncol=1)
+xbar22
+S22 <- cov(test)
+
+xbarAll <- matrix(list(xbar11,xbar21,xbar12,xbar22),nrow=2)
+SAll <- matrix(list(S11,S21,S12,S22),nrow=2)
+SAll[[1,1]]
+xbarAll[1,1]
+```
+```{r}
+manovaZuhdi<- function(xbarMatriks,xbarRow,xbarCol,xbarTotal,SMat,nameRow,nameCol,n,alpha){
+  SSPint=0
+  p <- dim(xbarMatriks[[1]])[1]
+  g <- dim(xbarMatriks)[2]
+  b <- dim(xbarMatriks)[1]
+  nameVar <- colnames(SMat[[1]])
+  for(l in 1:g){
+    for(k in 1:b){
+      SSPint = SSPint + n*(xbarMatriks[[k,l]]-xbarCol[[l]]-xbarRow[[k]]+xbarTotal)%*%t(xbarMatriks[[k,l]]-xbarCol[[l]]-xbarRow[[k]]+xbarTotal)
+    }
+  }
+  
+  cat("SSPint:\n")
+  print(SSPint)
+  cat("\n")
+  
+  SSPres <- 0
+  for(l in 1:g){
+    for(k in 1:b){
+      SSPres <- SSPres + (n-1)*SMat[[k,l]]
+    }
+  }
+  
+  cat("SSPres:\n")
+  print(SSPres)
+  cat("\n")
+  
+  wilk <- det(SSPres)/det(SSPint+SSPres)
+  stat_uji <- -1*(g*b*(n-1)-(p+1-(g-1)*(b-1))/2)*log(wilk)
+  titik_kritis <- qchisq(1-alpha,(g-1)*(b-1)*p)
+  pvalue <- 1-pchisq(stat_uji,(g-1)*(b-1)*p)
+  
+  cat("Uji Interaksi:\n")
+  cat("Wilk Lambda  =",wilk,"\n")
+  cat("Stat Uji     =",stat_uji,"\n")
+  cat("Titik Kritis =",titik_kritis,"\n")
+  cat("p-value      =",pvalue,"\n")
+  cat("Keputusan    =",ifelse(stat_uji>titik_kritis,"Tolak H0","Gagal Tolak H0"),"\n")
+  cat("\n")
+  
+  SSPfac1 <- 0
+  for(l in 1:g){
+    SSPfac1 <- SSPfac1 + b*n*(xbarCol[[l]]-xbarTotal)%*%t(xbarCol[[l]]-xbarTotal)
+  }
+  cat("SSP Factor 1:\n")
+  print(SSPfac1)
+  cat("\n")
+  
+  lambd1 <- det(SSPres)/det(SSPfac1+SSPres)
+  stat_uji1 <- -1*(g*b*(n-1)-(p+1-(g-1))/2)*log(lambd1)
+  tkritis1 <- qchisq(1-alpha,(g-1)*p)
+  pvalue1 <- 1-pchisq(stat_uji1,(g-1)*p)
+  
+  cat("Uji Faktor 1:\n")
+  cat("Wilk Lambda  =",lambd1,"\n")
+  cat("Stat Uji     =",stat_uji1,"\n")
+  cat("Titik Kritis =",tkritis1,"\n")
+  cat("p-value      =",pvalue1,"\n")
+  cat("Keputusan    =",ifelse(stat_uji1>tkritis1,"Tolak H0","Gagal Tolak H0"),"\n")
+  cat("\n")
+  
+  selang <- NULL
+  cat("Selang Bonferenni factor 1:\n")
+  for(l in 1:(g)){
+    m <- l+1
+    while(m<=g){
+      xbar1 <- xbarCol[[l]]
+      xbar2 <- xbarCol[[m]]
+      for(i in 1:p){
+        v <- g*b*(n-1)
+        dummy <- qt(1-(alpha/(p*g*(g-1))),v)*sqrt(SSPres[i,i]*2/(v*b*n))
+        selang <- rbind(selang,c(nameVar[i],nameCol[l],nameCol[m],round(xbar1[i]-xbar2[i]-dummy,4),round(xbar1[i]-xbar2[i]+dummy,4)))
+      }
+      m<-m+1
+    }
+  }
+  colnames(selang) <- c("Variabel","Grup","Grup","lower","upper")
+  rownames(selang) <- 1:dim(selang)[1]
+  print(selang)
+  cat("\n")
+  
+  SSPfac2 <- 0
+  for(q in 1:b){
+    SSPfac2 <- SSPfac2 + g*n*(xbarRow[[q]]-xbarTotal)%*%t(xbarRow[[q]]-xbarTotal)
+  }
+  cat("SSP Factor 2:\n")
+  print(SSPfac2)
+  cat("\n")
+  
+  lambd2 <- det(SSPres)/det(SSPfac2+SSPres)
+  stat_uji2 <- -1*(g*b*(n-1)-(p+1-(b-1))/2)*log(lambd2)
+  tkritis2 <- qchisq(1-alpha,(b-1)*p)
+  pvalue2 <- 1-pchisq(stat_uji2,(b-1)*p)
+  
+  cat("Uji Faktor 2:\n")
+  cat("Wilk Lambda  =",lambd2,"\n")
+  cat("Stat Uji     =",stat_uji2,"\n")
+  cat("Titik Kritis =",tkritis2,"\n")
+  cat("p-value      =",pvalue2,"\n")
+  cat("Keputusan    =",ifelse(stat_uji2>tkritis2,"Tolak H0","Gagal Tolak H0"),"\n")
+  cat("\n")
+  
+  selang <- NULL
+  cat("Selang Bonferenni factor 2:\n")
+  for(k in 1:(b)){
+    q <- k+1
+    while(q<=b){
+      xbar1 <- xbarRow[[k]]
+      xbar2 <- xbarRow[[q]]
+      for(i in 1:p){
+        v <- g*b*(n-1)
+        dummy <- qt(1-(0.05/(p*b*(b-1))),v)*sqrt(SSPres[i,i]*2/(v*g*n))
+        selang <- rbind(selang,c(nameVar[i],nameRow[k],nameRow[q],round(xbar1[i]-xbar2[i]-dummy,4),round(xbar1[i]-xbar2[i]+dummy,4)))
+      }
+      q<-q+1
+    }
+  }
+  colnames(selang) <- c("Variabel","Grup","Grup","lower","upper")
+  rownames(selang) <- 1:dim(selang)[1]
+  print(selang)
+}
+```
+```{r}
+varRow <- c("A", "B")
+varCol <- c("Dengan","Tanpa")
+manovaZuhdi(xbarAll,xbarrow,xbarcol,xbarTotal,SAll,varRow,varCol,14,0.05)
+```
+```{r}
+anova1 <-aov(Efisiensi~Jenis*Fuel,data=data)
+anova2 <- aov(Akselerasi~Jenis*Fuel,data=data)
+summary(anova1)
+summary(anova2)
+```
+```{r}
+library(readxl)
+data <- read_excel("C:/Users/lili/Downloads/data2019-2020_2.xlsx")
+data$Jenis <- as.factor(data$Jenis)
+data
+```
+```{r}
+T.test <- function(X, mu=0, alpha){
+  X <- as.matrix(X)
+  n <- nrow(X)
+  p <- ncol(X)
+  df2 <- n - p
+  if(df2 < 1L) stop("Need nrow(X) > ncol(X).")
+  if(length(mu) != p) mu <- rep(mu[1], p)
+  xbar <- colMeans(X)
+  S <- cov(X)
+  T2 <- n * t(xbar - mu) %*% solve(S) %*% (xbar - mu)
+  Fstat <- T2 / (p * (n-1) / df2)
+  pval <- 1 - pf(Fstat, df1=p, df2=df2)
+  C2 <- (n - 1) * p * qf(1-alpha, df1=p, df2=n-p)/(n-p)
+  data.frame(T2=as.numeric(T2), C2=as.numeric(C2), Fstat=as.numeric(Fstat),
+  df1=p, df2=df2, p.value=as.numeric(pval), row.names="")
+}
+```
+
+```{r}
+K1 <-data %>% filter(Jenis=='Pre') %>% dplyr::select(Grammar,Listening,Reading,Writing)
+K2 <-data %>% filter(Jenis=='Post') %>% dplyr::select(Grammar,Listening,Reading,Writing)
+diff <- K1-K2
+T.test(diff,alpha=0.05)
+```
+```{r}
+X <- as.matrix(diff)
+n <- nrow(X)
+p <- ncol(X)
+df2 <- n - p
+xbar <- colMeans(diff)
+S <- cov(diff)
+
+bon <- NULL
+alpha3 <- 1 - 0.05/(2*p)
+for(k in 1:p){
+  bon <- c(bon,
+  xbar[k] - sqrt(S[k,k]/n) * qt(alpha3, df=n-1),
+  xbar[k] + sqrt(S[k,k]/n) * qt(alpha3, df=n-1)) #CI Bonferroni
+}
+bon
+```
+#2020/2021
+1
+```{r}
+library(readxl)
+data <- read_excel("C:/Users/lili/Downloads/data2020-2021_1.xlsx")
+data
+```
+```{r}
+mu0 <- c(3.56,19.75,75.67)
+T.test <- function(X, mu=0, alpha){
+  X <- as.matrix(X)
+  n <- nrow(X)
+  p <- ncol(X)
+  df2 <- n - p
+  if(df2 < 1L) stop("Need nrow(X) > ncol(X).")
+  if(length(mu) != p) mu <- rep(mu[1], p)
+  xbar <- colMeans(X)
+  S <- cov(X)
+  T2 <- n * t(xbar - mu) %*% solve(S) %*% (xbar - mu)
+  Fstat <- T2 / (p * (n-1) / df2)
+  pval <- 1 - pf(Fstat, df1=p, df2=df2)
+  C2 <- (n - 1) * p * qf(1-alpha, df1=p, df2=n-p)/(n-p)
+  data.frame(T2=as.numeric(T2), C2=as.numeric(C2), Fstat=as.numeric(Fstat),
+  df1=p, df2=df2, p.value=as.numeric(pval), row.names="")
+}
+T.test(data, mu0, 0.05) 
+```
+```{r}
+xbar1 <- c(124.5,38.1,76.2,192.75,53.65,250.3)
+xbar2 <- c(129.3,31.7,87.4,236.6,44.25,280.2)
+D1 <- diag(c(sqrt(384.3),sqrt(68.2),sqrt(121.1),sqrt(1000.2),sqrt(322.4),sqrt(470.2)))
+D2 <- diag(c(sqrt(687.8),sqrt(51.7),sqrt(110.9),sqrt(792.6),sqrt(173.7),sqrt(1253.7)))
+R1 <- matrix(c(1,0.13,0.38,0.04,-0.05,0.2,0.13,1,0.11,0.1,-0.43,0.04,0.38,0.11,1,-0.11,0,-0.02,0.04,0.1,-0.11,1,-0.04,-0.01,-0.05,-0.43,0,-0.04,1,-0.34,0.2,0.04,-0.02,-0.01,-0.34,1),6,6,byrow=TRUE)
+R2 <- matrix(c(1,0.37,-0.19,0.1,0,0.47,0.37,1,0.04,-0.23,-0.37,0.22,-0.19,0.04,1,0.15,-0.06,-0.3,0.1,-0.23,0.15,1,0.02,0.13,0,-0.37,-0.06,0.02,1,0.25,0.47,0.22,-0.3,0.13,0.35,1),6,6,byrow=TRUE)
+S1 <- D1%*%R1%*%D1
+S2 <- D2%*%R2%*%D2
+n1 <- 20
+n2 <- 20
+```
+
+```{r}
+p <- 6
+f1.n <- n1
+f1.xbar <- xbar1
+f1.cov <- S1
+f2.n <- n2
+f2.xbar <- xbar2
+f2.cov <- S2
+
+s_pool <- ((f1.n-1)*f1.cov+(f2.n-1)*f2.cov)/(f1.n+f2.n-2)
+T2 <- t(f1.xbar-f2.xbar)%*%solve((1/f1.n+1/f2.n)*s_pool)%*%(f1.xbar-f2.xbar)
+cat("Nilai statistik uji T^2\n", T2) 
+nilai.F <- qf((1-0.05), p, f1.n + f2.n - p - 1)
+c2 <- (((f1.n + f2.n - 2)/(f1.n + f2.n - p - 1) * p)) * nilai.F
+cat("\n\nNilai c^2\n", c2)
+```
+```{r}
+bon <- NULL
+xbar <- f1.xbar - f2.xbar
+alpha3 <- 1 - 0.05/(2*p)
+for(k in 1:p){
+  bon <- c(bon,
+  xbar[k] - sqrt((1/f1.n+1/f2.n)*s_pool[k,k]) * qt(alpha3, df=f1.n+f2.n-2),
+   xbar[k] + sqrt((1/f1.n+1/f2.n)*s_pool[k,k]) * qt(alpha3, df=f1.n+f2.n-2)) #CI Bonferroni
+}
+bon
+```
+
+
+
+

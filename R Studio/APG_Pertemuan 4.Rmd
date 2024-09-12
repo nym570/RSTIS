@@ -1,0 +1,45 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+X1=c(73,43,47,53,58,47,52,38,61,56,56,34,55,65,75)
+X2=c(31,19,22,26,36,30,29,36,34,33,19,19,26,15,18)
+K1=cbind(X1,X2)
+K1
+Y1=c(51,41,43,41,47,32,24,43,53,52,57,44,57,40,68)
+Y2=c(35,14,19,29,34,26,19,37,24,27,14,19,30,7,13)
+K2=cbind(Y1,Y2)
+K2
+```
+
+```{r}
+diff=K1-K2
+diff
+```
+
+```{r}
+T.test <- function(X, mu=0){
+X <- as.matrix(X)
+n <- nrow(X)
+p <- ncol(X)
+df2 <- n - p
+if(df2 < 1L) stop("Need nrow(X) > ncol(X).")
+if(length(mu) != p) mu <- rep(mu[1], p)
+xbar <- colMeans(X)
+S <- cov(X)
+T2 <- n * t(xbar - mu) %*% solve(S) %*% (xbar - mu)
+Fstat <- T2 / (p * (n-1) / df2)
+pval <- 1 - pf(Fstat, df1=p, df2=df2)
+data.frame(T2=as.numeric(T2), Fstat=as.numeric(Fstat),
+df1=p, df2=df2, p.value=as.numeric(pval), row.names="")
+}
+muH0=c(0,0)
+T.test(diff,muH0)
+```
+
+
+
+

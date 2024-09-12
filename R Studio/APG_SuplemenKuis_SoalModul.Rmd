@@ -1,0 +1,89 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+#2018/2019 PCA
+X1: rata-rata lama sekolah (tahun)
+X2: pengeluaran per kapita rumah tangga (rupiah)
+X3: rasio tabungan terhadap pengeluaran rumah tangga
+X4: rata-rata jumlah anggota rumah tangga
+X5: persentase penduduk miskin
+X6: tingkat pengangguran terbuka (%)
+```{r}
+R1 <- matrix(c(1,0.88,0.96,0.94,0.9,0.9,0.88,1,0.9,0.91,0.94,0.95,0.96,0.9,1,0.96,0.93,0.92,0.94,0.91,0.96,1,0.93,0.94,0.9,0.94,0.93,0.93,1,0.95,0.9,0.95,0.92,0.94,0.95,1),6,6,byrow=TRUE)
+R1
+```
+```{r}
+eig1 <- eigen(R1)
+eig1
+```
+```{r}
+prop1 <- eig1$values/sum(eig1$values)
+cum1 <- rep(NA,length(prop1))
+cum1[1] <- prop1[1]
+for(i in 2:length(prop1)){
+  cum1[i] <- cum1[i-1]+prop1[i]
+}
+for(i in 1: length(prop1)){
+  print(cum1[i])
+}
+```
+Komponen utama yang dipilih untuk mewakili variabel adalah komponen utama yang menyumbangkan proporsi terhadap varians total minimal sebesar 80%.
+Sehingga, KU1 cukup untuk menjelaskan variabel karena menyumbang keragaman 93,95% dari varians total. Kemudian KU2, KU3, KU4, KU5, dan KU6 bisa dihilangkan.
+
+Persamaan komponen utama memiliki koefisien vektor eigen. Sehingga persamaan komponen
+utama yang didapat adalah..
+
+Y1 = −0,4041X1 − 0,4041X2 − 0,4107X3 − 0,4114X4 − 0,4092X5 − 0,4099X6
+
+Nama komponen utama (variabel baru yang bisa digunakan adalah “faktor penentu status kemiskinan” karena mengandung keenam variabel RLB, pengeluaran per kapita, rasio tabungan
+terhadap pengeluaran rumah tangga, rata-rata jumlah ART, persentase penduduk miskin, dan TPT.
+
+
+
+#2018/2019 FA
+100 responden.
+X1: kualitas produk 
+X2: kemudahan penggunaan toko online 
+X3: dukungan teknis 
+X4: penanganan pengaduan/complain 
+X5: iklan di media/internet/lainnya
+X6: harga
+X7: garansi yang diberikan
+X8: packaging/pengemasan
+X9 : kemudahan cara pembayaran
+X10: kecepatan pengiriman
+
+```{r}
+#matrix korelasi
+R2 <- matrix(c(1,-0.317,0.096,0.106,-0.053,-0.401,0.088,0.027,0.104,0.028,-0.317,1,0.001,0.14,0.43,0.229,0.052,-0.027,0.156,0.192,0.096,0.001,1,0.097,-0.063,-0.271,0.797,-0.074,0.08,0.025,0.106,0.14,0.097,1,0.197,-0.128,0.14,0.059,0.757,0.865,-0.053,0.43,-0.063,0.197,1,0.134,0.011,0.084,0.184,0.276,-0.401,0.229,-0.271,-0.128,0.134,1,-0.245,0.023,-0.115,-0.073,0.088,0.052,0.797,0.14,0.011,-0.245,1,0.035,0.197,0.109,0.027,-0.027,-0.074,0.059,0.084,0.023,0.035,1,0.069,0.106,0.104,0.156,0.08,0.757,0.184,-0.115,0.197,0.069,1,0.751,0.028,0.192,0.025,0.865,0.276,-0.073,0.109,0.106,0.751,1),10,10,byrow=TRUE)
+R2
+```
+Pada matriks R, terlihat korelasi antarvariabel mana saja yang signifikan. Korelasi yang signifikan terjadi pada 10 pasang yaitu
+X2 dan X5; X1 dan X6; X3 dan X6; X3 dan X7; X6 dan X7; X4 dan X9; X6 dan X9 ; X4 dan X10; X5 dan X10; X9 dan X10;
+
+Di antara 10 pasangan ini, hanya ada 1 variabel yang tidak memiliki korelasi dengan yang lainnya yaitu X8. Dari 10 korelasi ini, bisa disimpulkan bahwa seluruh variabel kecuali X8 berkorelasi satu sama lain. Adanya korelasi ini memenuhi asumsi dilaksanakannya AF yaitu harus ada korelasi
+antarvariabel.
+
+```{r}
+#matrix pearson dan MSA, MSA diagonal utama
+R <- matrix(c(0.573,0.054,0.007,-0.101,-0.027,0.362,0.01,-0.042,-0.068,0.124,0.054,0.634,-0.008,0.015,-0.381,-0.188,-0.05,0.084,-0.047,-0.039,0.007,-0.008,0.512,-0.137,0.06,0.106,0.793,0.147,0.132,0.081,-0.101,0.015,-0.137,0.698,0.043,0.024,0.096,0.041,-0.313,0.081,-0.027,-0.381,0.06,0.043,0.664,-0.052,-0.039,-0.067,0.03,-0.157,0.362,-0.188,0.106,0.024,-0.052,0.682,0.057,-0.038,0.013,0.028,0.01,-0.05,-0.793,0.096,-0.039,0.057,0.525,-0.143,-0.191,-0.025,-0.042,0.084,0.147,0.041,-0.067,-0.038,-0.143,0.347,0.018,-0.085,-0.068,-0.047,0.132,-0.313,0.03,0.013,-0.191,0.018,0.841,-0.283,0.124,-0.039,0.081,0.081,-0.157,0.028,-0.025,-0.085,-0.283,0.701),10,10,byrow=TRUE)
+R
+```
+Kemudian pada MSA, variabel dengan MSA < 0,5 hanya variabel X8, sehingga variabel tersebut bisa dibuang dari analisis faktor. 
+
+#![Comp](C:/Users/lili/Pictures/soal2.png)
+
+maka jawabannya
+#![Comp](C:/Users/lili/Pictures/jawaban2.png)
+
+Ciri tiap faktor yang terbentuk dan perlu tidaknya rotasi (untuk melihat variabel yang menyusun faktor, lihat yang memiliki nilai loadings > 0,5.
+
+ F1 terdiri dari variabel X4 (penanganan pengaduan), X9 (kemudahan pembayaran), dan X10 (kecepatan pengiriman). Sehingga F1 bisa dinamakan dengan “faktor pelayanan pelanggan” yang menyumbangkan 31,73% keragaman terhadap varians total.
+ F2 terdiri dari variabel X3 (dukungan teknis), X6 (harga), dan X7 (garansi). 
+ F3 terdiri dari variabel X2 (kemudahan penggunaan toko online), X3 (dukungan teknis), dan X7 (garansi). 
+Ada persinggungan yaitu pada X3 dan X7 sehingga sulit menentukan ciri faktor.
+ F4 terdiri dari variabel X1 (kualitas produk) dan X5 (iklan). Sehingga F4 bisa dinamakan “faktor kemenarikan produk” yang menyumbangkan 10,89% keragaman terhadap varians total.
+
+Karena ada persinggungan variabel X3 dan X7 pada F2 dan F3, perlu dilakukan rotasi.

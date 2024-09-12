@@ -1,0 +1,43 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(psych)
+library(GPArotation)
+library(readxl)
+
+datanya <- read_excel("C:/Users/lili/Downloads/pert 8.xlsx")
+data_aku <- data.frame(datanya$y1,datanya$y2,datanya$y3,datanya$y4,datanya$y5,datanya$y6)
+data_aku
+```
+
+```{r}
+cov(data_aku)
+round(cor(data_aku),digits = 3)
+```
+
+```{r}
+eigen(cor(data_aku))
+```
+
+```{r}
+AKU <- princomp(data_aku, cor = T)
+summary(AKU,loadings=FALSE)
+```
+
+```{r}
+scree(data_aku,factors=TRUE,pc=TRUE,main="Scree plot",hline=NULL,add=FALSE)
+```
+```{r}
+KU <- AKU$scores
+cor(data_aku,KU)
+```
+
+
+#SOAL NO 1
+```{r}
+
+```
+

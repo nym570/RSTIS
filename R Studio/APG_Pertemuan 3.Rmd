@@ -1,0 +1,56 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+data <- data.frame(x1=c(3,6,5,10),x2=c(10,12,14,9))
+data
+```
+```{r}
+n <- 4
+p <- 2
+xbar = colMeans(data)
+col <- c(6,11)
+xbarmod <- xbar-col
+s = cov(data)
+sinv <- solve(s)
+T2 <- n%*%t(xbarmod)%*%sinv%*%xbarmod
+T2
+```
+
+```{r}
+kritis <- (3-1)*2/(3-2)
+dff <- kritis * qf(.95,df1=2,df2=3-2)
+dff
+```
+Tolak karena T2 lebih kecil dari F
+
+```{r}
+a1 <- c(1,0)
+bawah <- (t(a1)%*%xbar)-(qt(1-(0.05/4),n-1)%*%(sqrt(t(a1)%*%s%*%a1)/sqrt(n)))
+bawah
+atas <- (t(a1)%*%xbar)+(qt(1-(0.05/4),n-1)%*%(sqrt(t(a1)%*%s%*%a1)/sqrt(n)))
+atas
+```
+
+```{r}
+a2 <- c(0,1)
+bawah <- (t(a2)%*%xbar)-(qt(1-(0.05/4),n-1)%*%(sqrt(t(a2)%*%s%*%a2)/sqrt(n)))
+bawah
+atas <- (t(a2)%*%xbar)+(qt(1-(0.05/4),n-1)%*%(sqrt(t(a2)%*%s%*%a2)/sqrt(n)))
+atas
+```
+
+```{r}
+library(car)
+alpha<-0.05
+tconst <- sqrt((p/n)*((n-1)/(n-p)) * qf(1-alpha,p,n-p))
+id <- c(1,2)
+plot(ellipse(center=xbar[id], shape=s[id,id], radius=tconst,draw=F),type="n", xlab="y1", ylab="y2")
+lines(ellipse(center=xbar[id], shape=s[id,id], radius=tconst,
+lwd=3), xlab="y1", ylab="y2")
+points(6,11,col="red", pch=16)
+text(6.5,10.5,expression(mu[0]))
+text(xbar[1]+0.5,xbar[2],expression(bar(x)))
+```
+

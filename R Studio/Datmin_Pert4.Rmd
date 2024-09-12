@@ -1,0 +1,166 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+#tenis (naivebayes)
+```{r}
+library(readxl)
+dat.tenis <- read.csv("G:/download chrome/tenis.csv")
+```
+
+```{r}
+dat.tenis
+```
+
+```{r}
+set.seed(1000)
+sample <- sample(c(TRUE, FALSE), nrow(dat.tenis), replace=TRUE, prob=c(0.7,0.3))
+train  <- dat.tenis[sample, ]
+test   <- dat.tenis[!sample, ]
+
+dim(train)
+dim(test)
+
+```
+
+
+```{r}
+library(e1071)
+model <- naiveBayes(PlayTennis ~ ., data = train)
+print(model)
+```
+
+```{r}
+test
+```
+
+
+```{r}
+predict(model,test)
+```
+
+
+#Iris (descision Tree)
+```{r}
+library(party)
+dat.iris <- iris
+dat.iris
+```
+
+```{r}
+Sample <- sample(1:150, 50)
+testing <- dat.iris[Sample, ]
+learning <- dat.iris[-Sample, ]
+output.tree <- ctree(Species ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width, data = learning)
+```
+
+```{r}
+plot(output.tree)
+```
+
+```{r}
+Prediksi <- predict(output.tree,testing)
+Prediksi
+```
+
+
+```{r}
+library(caret)
+```
+
+```{r}
+cm <- confusionMatrix(table(Prediksi, testing[, 5]),positive = "setosa")
+cm$table
+```
+
+```{r}
+cm$positive
+```
+```{r}
+cm$overall
+```
+
+```{r}
+cm$byClass
+```
+
+```{r}
+cm
+```
+
+akurasi = 0,96
+presisi = 1
+recall = 1
+sensiticity = 1
+specificity = 1
+
+
+
+
+```{r}
+library(dplyr)
+library(tibble)
+library(explore)
+titanic <- as_tibble(Titanic)
+titanic %>% describe_tbl(n = n)
+```
+
+```{r}
+titanic %>% describe()
+colSums(is.na(titanic))
+head(titanic)
+titanic$Survived <- factor(titanic$Survived)
+titanic$Class <- factor(titanic$Class)
+titanic$Sex <-factor(titanic$Sex)
+titanic$Age<- factor(titanic$Age)
+```
+
+```{r}
+set.seed(1000)
+sample.titanic <- sample(c(TRUE, FALSE), nrow(titanic), replace=TRUE, prob=c(0.7,0.3))
+train.titanic  <- titanic[sample.titanic, ]
+test.titanic   <- titanic[!sample.titanic, ]
+```
+
+```{r}
+library(e1071)
+model.titanic <- naiveBayes(Survived ~ ., data = train.titanic)
+print(model.titanic)
+```
+
+```{r}
+test.titanic
+```
+
+```{r}
+Pred.ti <- predict(model.titanic,test.titanic)
+```
+
+```{r}
+CM.titanic <- table(Pred.ti,test.titanic$Survived)
+CM.titanic 
+```
+
+```{r}
+accuracy <- (sum(diag(CM.titanic)))/sum(CM.titanic)
+accuracy
+```
+
+```{r}
+library(party)
+output.tree.titanic <- ctree(Survived ~., data = train.titanic)
+```
+
+```{r}
+Prediksi.titan <- predict(output.tree.titanic,test.titanic)
+Prediksi.titan
+```
+
+```{r}
+library(caret)
+cm <- confusionMatrix(table(Prediksi.titan, test.titanic$Survived))
+cm
+```
+

@@ -1,0 +1,316 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+#Modul 8
+```{r}
+library(readxl)
+data8 <- read_excel("C:/Users/lili/Downloads/pert 8.xlsx")
+data8
+```
+```{r}
+#menghitung korelasi antar variabel
+round(cor(data8),digits=3)
+```
+
+```{r}
+#menghitung eigen vector
+eigen(cor(data8))
+```
+
+```{r}
+#analisis komponen utama
+AKU <- princomp(data8,cor=T)
+loadings(AKU)
+```
+
+```{r}
+#korelasi nilai KU dengan nilai variabel awal
+KU <- AKU$scores
+cor(data8,KU)
+```
+
+#Modul 9
+```{r}
+data(Investment, package="sandwich")
+Investment <- as.data.frame(Investment[,1:6])
+Investment
+```
+
+```{r}
+#standardisasi data
+zinvestment <- data.frame(scale(Investment))
+```
+
+```{r}
+#histogram
+par (mfrow = c(1,3))
+for (i in 1:6) {
+  hist(zinvestment[,i], prob = T, main = paste("X",i,sep= " "), xlab = paste("X",i,sep= " "))
+  lines(density(zinvestment[,i]))
+}
+```
+```{r}
+#normality test
+library(MVN) 
+mvn(data =zinvestment,mvnTest = "royston")
+```
+```{r}
+#barlete test
+library(REdaS)
+library(psych)
+bart_spher(zinvestment)
+```
+•	Uji Bartlet Sperisitas untuk menguji apakah setiap variabel saling independen atau tidak
+•	Interpretasi bartlet test Nilai Pvalue <0.05 berarti pada tingkat signifikansi 5% terdapat cukup bukti bahwa matriks korelasi tidak sama dengan matriks identitas. Sehingga variabel tidak saling independent dan dapat digunakan analisis multivariat.
+
+```{r}
+KMO(zinvestment)
+```
+•	Interpretasi KMO Semua variabel memiliki nilai MSA>0.5 sehingga dianggap reliabel dan tidak di hapus.
+
+```{r}
+#Menentukan jumlah faktor
+R<-cov(zinvestment)
+eigen<-eigen(R)
+eigen
+```
+•	Interpretasi cari eigen value >=1, maka disini hanya 1 faktor
+
+```{r}
+scree(R, pc=FALSE)
+```
+•	Interpretasi liat yang diatas 1, maka hanya 2 faktor
+
+```{r}
+fa.parallel(R, fa="fa")
+```
+•	Interpretasi liat elbow, maka hanya 2 faktor
+
+```{r}
+#Extract Factor
+Investment_fac<-factanal(factors=2,covmat=R, rotation = "varimax")
+Investment_fac
+```
+
+```{r}
+loads <- Investment_fac$loadings
+
+fa.diagram(loads)
+```
+
+```{r}
+library(psych)
+fac <- fa(zinvestment, nfactors=2, rotate ="varimax", covar=FALSE, fm="pa")
+fac
+```
+
+```{r}
+loads1 <- fac$loadings
+
+fa.diagram(loads1)
+```
+
+•	Rotation mencegah ada 1 variabel yang masuk 2 faktor
+•	Cumulative menceritakan seberapa faktor itu dapat menggambarkan data, sehingga 58% data dapat dijelaskan oleh factor 1 dan dengan menggunakan 2 buah faktor yaitu factor 1 dan 2 maka dapat tergambar 96% dari data
+•	pada loadings, cek variabel yang paling berpengaruh di setiap faktornya, maka akan masuk ke faktor tersebut
+•	Menggunakan diagram dapat terlihat variabel mana2 saja yang masuk suatu faktor. Jangan lupa namakan faktornya diliat dari variabel2 yang sesuai
+
+Contoh lain
+```{r}
+library(readxl)
+life <- read_excel("C:/Users/lili/Downloads/life data.xlsx")
+life
+
+```
+
+```{r}
+R1 <- cor(life)
+eigen(R1)
+```
+•	Interpretasi cari eigen value >=1, maka disini hanya 2 faktor
+
+```{r}
+sapply(1:4, function(f)
+  round(factanal(life, factors=f, method="mle")$PVAL,4))
+```
+•	Interpretasinya, cari yang sudah tidak signifikan, itu merupakan batas jumlah factor. Maka faktor yang diambil ada 2
+
+```{r}
+factanal(life, factors = 3, method = "mle")
+```
+
+```{r}
+factanal(life, factors = 3, covmat=R1, method = "mle", rotation = "none")
+```
+
+• Faktor pertama didominasi oleh harapan hidup saat lahir bagi laki-laki dan perempuan; mungkin faktor ini bisa diberi label "ketahanan hidup saat lahir"
+
+• Faktor kedua mencerminkan harapan hidup pada usia yang lebih tua, dan kita mungkin menyebutnya "ketahanan hidup di antara orang tua".
+
+• Faktor ketiga dari rotasi varimax memiliki beban tertinggi untuk harapan hidup laki-laki berusia 50 dan 75 dan dalam nada yang sama mungkin diberi label “ketahanan hidup untuk laki-laki lanjut usia”
+
+
+#Modul 10
+
+Biplot
+```{r}
+library(psych)
+library(GPArotation)
+```
+
+```{r}
+library(readxl)
+jatim <- read_excel("C:/Users/lili/Downloads/Data10.xlsx") 
+jatim <- jatim[,-1]
+jatim
+```
+
+```{r}
+eigen(cor(jatim))
+```
+•	Interpretasi cari eigen value >=1, maka disini hanya 2 faktor
+
+```{r}
+fa1 <- fa(jatim,nfactors=2,fm="pa",scores=TRUE)
+fa1
+```
+Berdasarkan analisis faktor tersebut, kedua faktor dapat menjelaskan keragaman data sebesar 73 persen, dengan factor 1 (43 persen) dan factor 2 (29.9 persen). Variabel- variable yang berkorelasi tinggi dengan factor 1 adalah: Kepadatan penduduk (density), persentase penduduk perkotaan (PddkKota), dan rasio ketergantungan penduduk (Depend). Sementara variable yang berkorelasi dengan factor 2 adalah: gini ratio, persenstase penduduk miskin dan pengeluaran per kapita non makanan (KapitaNMkn). Skor faktor pada output tersebut, tidak dapat dilihat langsung. Namun system di R sudah menghitungnya, sehingga dapat dibuat biplot nya
+
+```{r}
+biplot(fa1,labels=rownames(jatim))
+```
+Garis merah melambangkan vektor ciri (eigen vector). Semakin panjang eigen vector menunjukkan bahwa semakin besar kontribusi variable tersebut terhadap pembentukan factor. Berdasarkan biplot tersebut, dapat diketahui bahwa variable persentase penduduk kota (PddkKota) mempunyai peranan terbesar dalam pembentukan factor 1, disusul oleh variable kepadatan penduduk (Density) dan variable rasio ketergantungan (Dependency).
+
+Garis-garis eigen vector yang membentuk sudut semakin lancip menunjukkan
+bahwa ada korelasi yang tinggi diantara variabel. Pada Gambar biplot tersebut dapat dilihat bahwa variable persentase penduduk perkotaan (PddkKota) dengan kepadatan penduduk berkorelasi sangat tinggi (Density).
+
+Berdasarkan biplot tersebut, dapat dilihat bahwa terdapat pengelompokkan
+objek. Misalnya,
+
+• Kelompok 1, terdiri dari kabupaten/kota dengan nomor urut ke 27, 29, 26, 28, 8, 13 dan 12. Kelompok ini mempunyai karakteristik memiliki persentase penduduk miskin yang relative lebih tinggi dibanding
+kabupaten/kota lainnya.
+• Kelompok 2, terdiri dari kabupaten/kota dengan nomor urut ke 32, 36, 38, 35, 37, 30, 31, 25. Kelompok ini mempunyai karakteristik pengeluaran per kapita non makanan yang relative lebih tinggi dan persentase penduduk
+kota serta kepadatan penduduk yang relative lebih tinggi. Kelompok ini
+bisa dikatakan kelompok perkotaan dengan tingkat kemiskinan yang rendah.
+• Sementara itu ada juga kabupaten yang tidak ikut kedua kelompok
+tersebut, misalnya nomor urut 1 mempunyai ciri rasio ketergantungan
+penduduk yang relative lebih tinggi dibanding kabupaten kota lainnya,
+sedangkan untuk variable lainnya cenderung rendah
+
+
+Korespondensi
+```{r}
+library(FactoMineR)
+library(factoextra)
+library(ggplot2)
+library(gplots)
+```
+
+```{r}
+data("housetasks")
+head(housetasks)
+```
+
+```{r}
+library(gplots)
+data1 <- as.table(as.matrix(housetasks))
+data1
+balloonplot(t(data1), main ="Tugas Rumah", xlab ="", ylab="",label = FALSE, show.margins = FALSE,dotsize=4, text.size=0.5)
+```
+- Pekerjaan rumah seperti Binatu (Laundry), Makanan Utama (Main_meal) dan
+Makan Malam (Dinner) lebih sering dilakukan oleh “Istri”(Wife).
+- Perbaikan-perbaikan (Repairs) dan menyetir (Driving) lebih banyak dilakukan oleh “suami” (Husband).
+- Liburan (Holidays) sering dilakukan secara “bersama-sama” (Jointly)
+
+```{r}
+an.ca <- CA(housetasks, graph = FALSE)
+print(an.ca)
+summary(an.ca)
+```
+Dari output tersebut didapatkan: nilai Chi square yang menunjukkan statistik uji untuk independence test antar kategori baris dan kolom adalah sebesar 1944.456 (p-value =0 ). Nilai Chi square yang tinggi tersebut menunjukkan ada hubungan/ketergantunganantar kategori baris dan kolom.
+
+Terbentuk 3 dimensi, dimensi 1 menjelaskan 48.692% dari total inertia (variasi data), dimensi 2 sebesar 39.913% dan dimensi 3 sebesar 11.395%. Namun jika kita menggunakan dua dimensi pertama (dimensi 1 dan 2) saja, total inertia (varians) yang bisa dijelaskan sudah cukup tinggi yaitu sebesar 88.605%.
+
+Output juga menghasilkan skor setiap dimensi untuk kategori baris dan kolom(ini tidak lain adalah titik-titik koordinat). Namun cukup sulit diinterpretasikan. Oleh karena itu perlu digunakan visualisasi grafik.
+
+```{r}
+df1 <- (nrow(housetasks) - 1) * (ncol(housetasks) - 1)
+qchisq(1-0.05,df=df1)
+```
+Nilai Chi-square tabel pada saat alpha=0.05% dan derajat bebas df=(nr-1)*(nc-1) adalah sebesar 50.99846. Kita lihat nilai Chi-square hitung = 1944.456 > Chi-square tabel. Hal ini menghasilkan keputusan “tolak H0” (antar kategori baris dan kolom independent), artinya ada hubungan antar kategori baris dan kolom
+
+```{r}
+fviz_screeplot(an.ca,addlabels = TRUE) +
+geom_hline(yintercept=33.33, linetype=2, color="red")
+```
+
+Data “housetasks” berisi 13 baris dan 4 kolom. Nilai yang diharapkan dari nilai eigen (eigen rata-rata) untuk setiap sumbu adalah 1/(nrow (housetasks) -1) = 1/12 = 8.33% dalam bentuk baris. 1/(ncol (tugas rumah) -1) = 1/3 = 33.33% dalam bentuk kolom. Setiap sumbu dengan kontribusi yang maksimum dari dua persentase ini harus dianggap penting dan termasuk dalam solusi untuk interpretasi data. Oleh karena itu untuk menentukan banyaknya dimensi dapat dilihat dari screeplot dengan cut off =33.33%
+
+Menurut grafik di atas, cukup digunakan dimensi 1 dan 2. Dimensi 3
+menjelaskan hanya 11,4% dari total inertia yang berada di bawah nilai eigen rata-rata (33,33%) dan terlalu sedikit untuk disimpan dalam analisis lebih lanjut.
+
+```{r}
+library(Rcpp)
+# repel= TRUE untuk menghindari text tumpang tindih(running lambat jika titiknya banyak)
+fviz_ca_biplot(an.ca, repel = F)
+```
+Plot simetris mewakili profil baris dan kolom secara bersamaan dalam ruang bersama. Biplot simetris ini menunjukkan pola umum data. Warna biru adalah kategori untuk baris dan merah untuk kolom. Dalam hal ini, hanya jarak antar titik dalam baris atau jarak antar titik dalam kolom yang dapat diinterpretasikan. Sementara itu, jarak antara item baris dan kolom tidak memiliki makna. Jarak antara titik baris atau titik kolom memberikan ukuran similarity (atau disimilarity). Titik yang berdekatan menunjukkan adanya kesamaan profil
+
+- Pekerjaan rumah seperti menyiapkan makan malam (Dinner), sarapan (Breakfast), mencuci pakaian (Laundry) mempunyai profil yang sama. Pekerjaan tersebut lebih sering dilakukan oleh istri (Wife).
+- Mengemudi (Driving) dan perbaikan (Repairs) lebih sering dilakukan oleh
+suami (Husband).
+- Belanja (Shopping), urusan keuangan (Insurance & Finance), kegiatan
+bersih-bersih rumah (Tidying & Dishes) dan hiburan (Holidays) lebih sering dilakukan secara bersama-sama antara suami istri.
+
+```{r}
+fviz_ca_biplot(an.ca,map ="rowprincipal", arrow = c(TRUE, TRUE),
+repel = F)
+```
+Jika sudut antara dua anak panah (biru dan merah) lancip, maka itu adalah
+hubungan yang kuat antara baris dan kolom yang bersesuaian. Pada gambar
+tersebut menunjukkan bahwa
+- Pekerjaan rumah seperti mencuci pakaian (Laundry), menyiapkan
+makanan (Main_meal), makan malam (Dinner) sangat erat berhubungan dengan istri (Wife).
+- Pekerjaan perbaikan (Repairs) sangat erat berhubungan dengan suami
+(Husband), sementara mengemudi (Driving) cukup erat berhubungan
+dengan suami. - Hiburan (Holidays) sangat erat berhubungan dengan
+perkerjaan bersama-sama (Jointly), sementara keuangan (Finances)
+dan belanja (Shopping), urusan asuransi, dan pemeliharaan kebersihan
+rumah (Tidying dan Dishes) cukup erat berhubungan dengan “jointly”.
+- Sementara pekerjaan “Official” erat berhubungan dengan pekerjaan
+yang dilakukan secara bergantian (Alternating) dan pekerjaan suami
+(Husband).
+
+```{r}
+#Biplot kontribusi setiap kategori Baris terhadap pembentukan Dimensi
+fviz_ca_biplot(an.ca, map ="colgreen", arrow = c(TRUE, FALSE),
+repel = F)
+```
+Semakin dekat panah (dalam hal jarak sudut) ke sumbu dan panjang vektor /panah semakin panjang, maka semakin besar kontribusi kategori baris pada sumbu itu relatif terhadap sumbu lainnya. Jika panah berada di tengah antara keduanya, kategori barisnya berkontribusi pada dua sumbu pada tingkat yang sama. Pada Gambar tersebut dapat kita lihat bahwa:
+- Kategori baris “Repairs” memiliki kontribusi penting terhadap kutub positif dimensi pertama (Dim1), sedangkan kategori “Laundry” dan “Main_meal” memiliki kontribusi besar terhadap kutub negatif dimensi pertama;
+- Dimensi 2 terutama ditentukan oleh kategori baris “Holidays”.
+- Kategori baris “Driving” berkontribusi pada dua sumbu pada tingkat yang sama.
+
+```{r}
+#Biplot kontribusi setiap kategori Kolom terhadap Dimensi
+fviz_ca_biplot(an.ca, map ="rowgreen", arrow = c(FALSE, TRUE), repel
+= F)
+```
+• Kategori “Husband” berkontribusi penting dalam pembentukan Dimensi
+pertama di kutub positif dan kategori “Wife” di kutub negatif
+• Kategori “Jointly” berkontribusi penting dalam Dimensi 2.
+
+```{r}
+# Dimension description
+deskripsi.dimensi <- dimdesc(an.ca, axes = c(1,2))
+deskripsi.dimensi
+```
+Dengan demikian kita dapat melabeli Dimensi 1 sebagai “Pekerjaan/tugas rumah yang dilakukan suami atau istri”, sementara Dimensi 2 sebagai “Pekerjaan/tugas rumah yang dilakukan suami dan istri bersamaan”.
+
+```{r}
+
+```
+
+

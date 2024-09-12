@@ -1,0 +1,273 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Libraray
+```{r}
+library(readxl)
+library(car)
+library(biotools)
+library(RVAideMemoire)
+```
+## Data yang diketahui
+```{r}
+g = 2
+b = 3
+n = 4
+p = 2
+data = read_excel("C:/Users/lili/Downloads/penugasan.xlsx")
+data
+alpha = 0.05
+```
+```{r}
+data[,1]=as.factor(data$faktor1)
+data[,2]=as.factor(data$faktor2)
+data
+attach(data)
+```
+## Uji kesamaan kovarians
+```{r}
+boxM(cbind(Keramahan,Optimisme),faktor1)
+boxM(cbind(Keramahan,Optimisme),faktor2)
+boxM(cbind(Keramahan,Optimisme),paste(faktor1,faktor2))
+```
+Berdasarkan output di atas, terlihat bahwa p-value > alpha, maka keputusannya adalah gagal tolak H0. Hal ini menunjukkan bahwa matriks kovarians antar kelompok adalah sama
+
+## Uji Kenormalan Multivariat
+```{r}
+mshapiro.test(data[data$faktor1=="laki-laki",-c(1,2)])
+mshapiro.test(data[data$faktor1=="perempuan",-c(1,2)])
+mshapiro.test(data[data$faktor2=="kaya",-c(1,2)])
+mshapiro.test(data[data$faktor2=="menengah",-c(1,2)])
+mshapiro.test(data[data$faktor2=="miskin",-c(1,2)])
+```
+Berdasarkan output di atas, terlihat bahwa p-value > alpha, maka keputusannya adalah gagal tolak H0. Hal ini menunjukkan bahwa data berdistribusi normal
+
+## Uji Manova
+```{r}
+result <- manova(cbind(Keramahan,Optimisme) ~ faktor1+faktor2, data=data)
+summary(result, test="Wilks")
+```
+
+```{r}
+result <- manova(cbind(Keramahan,Optimisme) ~ faktor1*faktor2, data=data)
+summary(result, test="Wilks")
+```
+
+# MANUAL
+```{r}
+X = as.matrix(data[,3:4])
+X
+```
+## Hipotesis
+H0 : gamma11 = gamma12 = gamma13 = gamma21 = gamma22 = gamma23 = 0 (tidak efek interaksi)
+H1 : minimal ada satu gamma_lk != 0 (ada efek interaksi)
+
+## Tingkat Signifikansi
+alpha = 5% = 0.05
+
+## Statistik Uji
+lamda = det(SSPres)/det(SSPint+SSPres)
+
+## Wilayah Kritis
+```{r}
+kritis = qchisq(1-alpha,(g-1)*(b-1)*p)
+kritis
+```
+
+## Statistik Hitung
+### Rata-rata
+```{r}
+## Rata-rata per karakteristik/variabel keseluruhan
+xbar.. = matrix(colMeans(X))
+
+## Rata-rata tiap karakteristik tiap kategori pada faktor 1
+xbar_l. = matrix(c(colMeans(data[data$faktor1 == "laki-laki",3:4]),colMeans(data[data$faktor1 == "perempuan",3:4])),ncol = 2)
+
+## Rata-rata tiap karakteristik tiap kategori pada faktor 2
+xbar_.k = matrix(c(colMeans(data[data$faktor2 == "kaya",3:4]),colMeans(data[data$faktor2 == "menengah",3:4]),colMeans(data[data$faktor2 == "miskin",3:4])),ncol = 3)
+
+## Rata-rata interaksi tiap karakteristik
+xbar_lk = array(c(colMeans(data[data$faktor1 == "laki-laki" & data$faktor2 == "kaya",3:4]),
+                  colMeans(data[data$faktor1 == "perempuan" & data$faktor2 == "kaya",3:4]),
+                  colMeans(data[data$faktor1 == "laki-laki" & data$faktor2 == "menengah",3:4]),
+                  colMeans(data[data$faktor1 == "perempuan" & data$faktor2 == "menengah",3:4]),
+                  colMeans(data[data$faktor1 == "laki-laki" & data$faktor2 == "miskin",3:4]),
+                  colMeans(data[data$faktor1 == "perempuan" & data$faktor2 == "miskin",3:4])), dim = c(2,1,2,3))
+
+xbar..
+xbar_l.
+xbar_.k
+xbar_lk
+```
+
+### Sum of Square
+```{r}
+## SSP Factor 1
+SSP_f1 = 0
+for(l in c(1:g)){
+  add = b*n*(xbar_l.[,l]-xbar..)%*%t(xbar_l.[,l]-xbar..)
+  SSP_f1 = SSP_f1+add
+}
+SSP_f1
+```
+```{r}
+## SSP Factor 2
+SSP_f2 = 0
+for(k in c(1:b)){
+  add = g*n*(xbar_.k[,k]-xbar..)%*%t(xbar_.k[,k]-xbar..)
+  SSP_f2 = SSP_f2+add
+}
+SSP_f2
+```
+```{r}
+## SSP Interaction
+SSP_int = 0
+for (l in c(1:g)) {
+  for (k in c(1:b)) {
+    add = n*(xbar_lk[,,l,k]-xbar_l.[,l]-xbar_.k[,k]+xbar..)%*%t(xbar_lk[,,l,k]-xbar_l.[,l]-xbar_.k[,k]+xbar..)
+    SSP_int = SSP_int + add
+  }
+}
+SSP_int
+```
+```{r}
+A1B1 = X[1:4,]
+A1B2 = X[5:8,]
+A1B3 = X[9:12,]
+A2B1 = X[13:16,]
+A2B2 = X[17:20,]
+A2B3 = X[21:24,]
+a = array(c(A1B1,A2B1,A1B2,A2B2,A1B3,A2B3),dim = c(4,2,2,3))
+a
+```
+
+```{r}
+## SSP Residual
+SSP_res = 0
+for (l in c(1:g)) {
+  for (k in c(1:b)) {
+    for (r in c(1:n)) {
+      add = (a[r,,l,k]-xbar_lk[,,l,k])%*%t(a[r,,l,k]-xbar_lk[,,l,k])
+      SSP_res = SSP_res + add
+    }
+  }
+}
+SSP_res
+```
+```{r}
+## SSP Total (Corrected)
+SSP_cor = 0
+for (l in c(1:g)) {
+  for (k in c(1:b)) {
+    for (r in c(1:n)) {
+      add = (a[r,,l,k]-xbar..)%*%t(a[r,,l,k]-xbar..)
+      SSP_cor = SSP_cor + add
+    }
+  }
+}
+SSP_cor
+```
+### Pengujian
+```{r}
+## Efek Interaksi
+det(SSP_res)
+det(SSP_int+SSP_res)
+lamda = det(SSP_res)/det(SSP_int+SSP_res)
+lamda
+stat_value = -(g*b*(n-1)-(p+1-(g-1)*(b-1))/2)*log(lamda)
+print("Statistik Hitung :")
+print(stat_value)
+print("Nilai Kritis :")
+print(kritis)
+ifelse(stat_value>kritis,"Keputusan : Tolak H0","Keputusan : Gagal Tolak H0")
+```
+## Kesimpulan
+Dengan tingkat signifikansi 5% dan data yang digunakan, terdapat cukup bukti untuk menyatakan bahwa terdapat efek interaksi yang signifikan
+
+
+```{r}
+## Efek Faktor 1
+det(SSP_res)
+det(SSP_f1+SSP_res)
+lamda = det(SSP_res)/det(SSP_f1+SSP_res)
+lamda
+stat_value = -(g*b*(n-1)-(p+1-(g-1))/2)*log(lamda)
+kritis = qchisq(1-alpha,(g-1)*p)
+print("Statistik Hitung :")
+print(stat_value)
+print("Nilai Kritis :")
+print(kritis)
+ifelse(stat_value>kritis,"Keputusan : Tolak H0","Keputusan : Gagal Tolak H0")
+```
+Dengan tingkat signifikansi 5% dan data yang digunakan, terdapat cukup bukti untuk menyatakan bahwa minimal terdapat 1 kategori pada faktor 1 yang memberikan efek pada variabel keramahan atau optimisme
+
+```{r}
+## Efek Faktor 2
+det(SSP_f2+SSP_res)
+lamda = det(SSP_res)/det(SSP_f2+SSP_res)
+lamda
+stat_value = -(g*b*(n-1)-(p+1-(b-1))/2)*log(lamda)
+kritis = qchisq(1-alpha,(b-1)*p)
+print("Statistik Hitung :")
+print(stat_value)
+print("Nilai Kritis :")
+print(kritis)
+ifelse(stat_value>kritis,"Keputusan : Tolak H0","Keputusan : Gagal Tolak H0")
+```
+Dengan tingkat signifikansi 5% dan data yang digunakan, terdapat cukup bukti untuk menyatakan bahwa minimal terdapat 1 kategori pada faktor 2 yang memberikan efek pada variabel keramahan atau optimisme
+
+```{r}
+anova1 <-aov(Keramahan~faktor1*faktor2,data=data)
+anova2 <- aov(Optimisme~faktor1*faktor2,data=data)
+summary(anova1)
+summary(anova2)
+```
+
+```{r}
+tukey1 <- TukeyHSD(anova1)
+tukey1
+tukey2 <- TukeyHSD(anova2)
+```
+
+
+```{r}
+## Uji Lanjutan Faktor 1
+new_alpha = alpha/(p*g*(g-1))
+v = g*b*(n-1)
+
+for(m in c(1:(g-1))){
+  for(l in c((m+1):g)){
+    for (i in c(1:p)) {
+      lower = xbar_l.[i,l]-xbar_l.[i,m]-qt(1-new_alpha,v)*sqrt(SSP_res[i,i]/v*2/(b*n))
+      upper = xbar_l.[i,l]-xbar_l.[i,m]+qt(1-new_alpha,v)*sqrt(SSP_res[i,i]/v*2/(b*n))
+      print(paste("Selang kepercayaan untuk faktor 1 Populasi ke",m,"dan populasi ke",l, "karakteristik ke-",i))
+    print(paste(round(lower,3),round(upper,3)))
+    }
+  }
+}
+```
+Dengan tingkat signifikansi 5% dan data yang digunakan, terdapat cukup bukti untuk menyatakan bahwa faktor 1 memberikan efek pada variabel optimisme
+
+```{r}
+## Uji Lanjutan Faktor 2
+new_alpha = alpha/(p*b*(b-1))
+v = g*b*(n-1)
+
+for(q in c(1:(b-1))){
+  for(k in c((q+1):b)){
+    for (i in c(1:p)) {
+      lower = xbar_.k[i,k]-xbar_.k[i,q]-qt(1-new_alpha,v)*sqrt(SSP_res[i,i]/v*2/(g*n))
+      upper = xbar_.k[i,k]-xbar_.k[i,q]+qt(1-new_alpha,v)*sqrt(SSP_res[i,i]/v*2/(g*n))
+      print(paste("Wilayah Kritis untuk faktor 2 Populasi ke",q,"dan populasi ke",k, "karakteristik ke-",i))
+    print(paste(round(lower,3),round(upper,3)))
+    }
+  }
+}
+```
+Dengan tingkat signifikansi 5% dan data yang digunakan, terdapat cukup bukti untuk menyatakan bahwa faktor 2 memberikan efek pada variabel optimisme pada kategori kaya dan menengah. 
+
+
+
+

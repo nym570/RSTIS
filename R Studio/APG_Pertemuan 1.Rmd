@@ -1,0 +1,123 @@
+---
+title: "Praktikum pertemuan 1 APG"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#contoh
+A <- matrix(c(1,9,2,4,3,6,2,2,8),3,3)
+B <- matrix(c(1,3,4,7,2,1,9,1,5),nrow=3)
+
+#check matrix
+is.matrix(A)
+is.vector(A)
+```
+
+```{r}
+#element-wise multiplication A*B
+A*B
+#multiplication matrix
+A%*%B
+```
+
+```{r}
+t(A)
+t(B)
+```
+
+```{r}
+#invers
+solve(A)
+solve(B)
+```
+
+```{r}
+#determinant
+det(A)
+det(B)
+```
+
+```{r}
+#diagonal matrix
+diag(A)
+diag(B)
+```
+
+```{r}
+#create diagonal matrix
+diag(diag(A))
+diag(2)
+```
+
+```{r}
+#eigen value & vector
+C <- matrix(c(1,0,2,4),2,2)
+eigen(C)
+```
+
+```{r}
+#geometri sample
+y1 <- c(27,16,34,93,72,63,48,88,76,30)
+y2 <- c(1.7,6.3,2.4,3.7,8.2,1.6,9.1,3.3,6.3,7.4)
+y3 <- c(2,7,4,9,13,6,17,8,19,12)
+ydat <- matrix(c(y1,y2,y3),ncol=3)
+ybar <- colMeans(ydat)
+ybar
+
+d1 <- y1-ybar[1]
+d2 <- y2-ybar[2]
+d3 <- y3-ybar[3]
+dmat <- matrix(c(d1,d2,d3),ncol=3)
+dmat
+
+sn <- (1/10)*t(dmat)%*%dmat
+print(dmat)
+print(sn)
+```
+```{r}
+cov(ydat)
+```
+```{r}
+D <- diag(sqrt(diag(sn)))
+D
+invD <- solve(D)
+
+Rmat <- invD%*%sn%*%invD
+print(Rmat)
+```
+
+```{r}
+cor(ydat)
+```
+
+```{r}
+library(corrplot)
+corrplot(cor(ydat))
+```
+
+```{r}
+GenVar <- det(sn)
+GenVar
+```
+
+```{r}
+library(readxl)
+data_apg1 <- read_excel("C:/Users/lili/Downloads/Contoh Data.xlsx")
+data_apg1
+```
+```{r}
+dataobv <- data_apg1[,c(2,3,5,6)]
+ybar_apg1<-colMeans(dataobv)
+ybar_apg1
+cov(data_apg1[,c(2,3,5,6)])
+cor(data_apg1[,c(2,3,5,6)])
+
+```
+
+
+
+

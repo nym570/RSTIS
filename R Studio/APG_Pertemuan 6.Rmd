@@ -1,0 +1,151 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(car)
+library(readxl)
+data6 <- read_excel("C:/Users/lili/Downloads/data exercise 6.13.xlsx")
+data6
+```
+
+```{r}
+data6$`Factor 1` <- as.factor(data6$`Factor 1`)
+data6$`Factor 2` <- as.factor(data6$`Factor 2`)
+X = as.matrix(data6[,1:3])
+Xt =t(X)
+```
+
+```{r}
+n = 5
+g = 2
+b = 2
+p = 3
+```
+
+```{r}
+xbartot = matrix(colMeans(X))
+xbarf1 = matrix(c(colMeans(data6[data6$`Factor 1`=="A1",1:3]),colMeans(data6[data6$`Factor 1`=="A2",1:3])),ncol=2)
+xbarf2 = matrix(c(colMeans(data6[data6$`Factor 2`=="B1",1:3]),colMeans(data6[data6$`Factor 2`=="B2",1:3])),ncol=2)
+xbartot
+xbarf1
+xbarf2
+```
+
+```{r}
+xbar_int = array(c(colMeans(data6[data6$`Factor 1`=="A1"&data6$`Factor 2`=="B1",1:3]),
+                   colMeans(data6[data6$`Factor 1`=="A2"&data6$`Factor 2`=="B1",1:3]),
+                   colMeans(data6[data6$`Factor 1`=="A1"&data6$`Factor 2`=="B2",1:3]),
+                   colMeans(data6[data6$`Factor 1`=="A2"&data6$`Factor 2`=="B2",1:3])),dim=c(3,1,2,2))
+xbar_int
+```
+
+```{r}
+SSPf = function(g,gr,n,xbar,xbartot) {
+  SSPfact = 0
+  for(i in c(1:g)){
+    temp = gr*n*(xbar[,i]-xbartot)%*%t(xbar[,i]-xbartot)
+    SSPfact = SSPfact + temp
+  }
+  return (SSPfact)
+}
+
+SSPf1 = SSPf(g,b,n,xbarf1,xbartot)
+SSPf1
+print("========================")
+SSPf2 = SSPf(g,g,n,xbarf2,xbartot)
+SSPf2
+```
+
+```{r}
+SSPf2 = 0 
+for(i in c(1:g)){
+  temp = g*n*(xbarf2[,i]-xbartot)%*%t(xbarf2[,i]-xbartot)
+  SSPf2 = SSPf2 + temp
+}
+SSPf2
+```
+
+```{r}
+SSP_int = 0 
+for(i in c(1:g)){
+  for(j in c(1:b)){
+    temp = n*(xbar_int[,,i,j]-xbarf1[,i]-xbarf2[,j]+xbartot)%*%t(xbar_int[,,i,j]-xbarf1[,i]-xbarf2[,j]+xbartot)
+    SSP_int = SSP_int + temp
+  }
+}
+SSP_int
+```
+
+```{r}
+SSP_res = 0
+for(i in c(1:g)){
+  for(j in c(1:b)){
+    for(r in c(1:n)){
+      x = as.matrix(data6[data6$`Factor 1`==paste("A",i,sep="") & data6$`Factor 2`==paste("B",j,sep=""),1:3])
+      temp = (x[r,]-xbar_int[,,i,j])%*%t(x[r,]-xbar_int[,,i,j])
+      SSP_res = SSP_res + temp
+    }
+  }
+}
+SSP_res
+```
+
+```{r}
+f = function(a,SSP,res,g,b,n,p){
+  Wilk = det(SSP_res)/det(SSP+res)
+  stat= -(g*b*(n-1)-((p+1-g+1)/2))*log(Wilk)
+  krit = qchisq(1-a,(g-1)*p)
+  print("Statistik Uji :")
+  print(stat)
+  print("Titik Kritis :")
+  print(krit)
+  if(stat>krit){
+    print("Keputusan : Tolak H0")
+  }
+  else{
+    print("Keputusan : Gagal Tolak H0")
+  }
+}
+f(0.05,SSPf1,SSP_res,g,b,n,p) #faktor 1
+print("========================")
+f(0.05,SSPf2,SSP_res,g,b,n,p) #faktor 2
+print("========================")
+f(0.05,SSP_int,SSP_res,g,b,n,p) #interaksi
+```
+
+```{r}
+bonferoni = function(a,p,g,gr,v,b,n,xbar,res){
+  v = g*b*(n-1)
+  tv = qt(1-(0.05/(p*gr*(gr-1))),v)
+  for(i in c(1:(g-1))){
+    for(j in c((i+1):g)){
+      for(m in c(1:p)){
+        upper = xbar[m,i]-xbar[m,j]+tv*sqrt(res[m,m]*2/(v*b*n))
+        lower = xbar[m,i]-xbar[m,j]-tv*sqrt(res[m,m]*2/(v*b*n))
+         kalimat1 = paste("lower bound selisih type",i,"dan type",j,"karakteristik ke",m,"=",lower)
+        kalimat2 = paste("upper bound selisih  type",i,"dan type",j,"karakteristik ke",m,"=",upper)
+        print(kalimat1)
+        print(kalimat2)
+      }
+    }
+  }
+}
+bonferoni(0.05,p,g,g,v,b,n,xbarf1,SSP_res) #faktor 1
+print("========================")
+bonferoni(0.05,p,g,b,v,b,n,xbarf2,SSP_res) #faktor 2
+
+```
+
+
+
+
+
+
+
+
+
+
+
+

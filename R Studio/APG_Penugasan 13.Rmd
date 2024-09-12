@@ -1,0 +1,117 @@
+---
+title: "R Notebook"
+output:
+  word_document: default
+  html_notebook: default
+---
+
+```{r}
+library(MASS)
+library(MVN)
+library(biotools)
+library(readxl)
+library(ggplot2)
+library(tidyverse)
+library(caret)
+```
+
+```{r}
+data13 <- read_excel("C:/Users/lili/Downloads/data13.xlsx",sheet="Sheet2")
+knitr::kable(head(data13, 10))
+```
+
+```{r}
+data13$admit <- as.factor(data13$admit)
+summary(data13)
+```
+
+```{r}
+mnv <- manova(cbind(GPA,GMAT)~admit, data=data13)
+summary(mnv)
+```
+Terlihat bahwa tolak H0 sehingga ada perbedaan yang signifikan
+
+#Uji Homogenitas
+H0 : ∑1=∑2=∑3
+H1 : Minimal ada satu yang berbeda
+```{r}
+boxM(data13[,-3],data13$admit)
+```
+Terlihat bahwa tidak memenuhi asumsi homogenitas (tolak H0). Namun pada tutorial kali ini akan dianggap memenuhi asumsi homogenitas.
+
+#Uji Normalitas
+```{r}
+mvn(data13[, -3])
+```
+Terlihat bahwa data semua variabel berdistribusi normal
+
+```{r}
+set.seed(123)
+k <- length(levels(data13$admit))
+n <- nrow(data13)
+# data training sebanyak
+idx <- sample(1:n, 36)
+data13.tr <- data13[idx,] #data training
+data13.ts <- data13[-idx,] #data testing
+# Analisis Diskriminan
+fit<-lda(admit~.,data=data13.tr)
+# Output dari analisis diskriminan
+fit
+```
+Prior : Jumlah sampel yg masuk
+Jumlah sampel yang masuk 28% dari group 1, 36% dari group 2, 36% dari group 3
+
+Means : rata-rata tiap kelompok. 
+Rata-rata GPA group1 adalah 3.4, group2 adalah 2.5, group3 adalah 2.9 
+Rata-rata GMAT group1 adalah 585.4, group2 adalah 461.53, group3 adalah 457.84
+
+koefisien diskriminannya
+LD1 : -5.86GPA - 0.0098GMAT
+LD2 = 2.2GPA - 0.015GMAT
+
+proporsi of trace : proporsi menjelaskan
+LD1 menjelaskan 97% dari data, sedangkan LD2 menjelaskan 3% dari data
+
+```{r}
+zscore <- predict(fit,data13[,-3])
+knitr::kable(head(zscore$x, 10))
+```
+
+```{r}
+kor1 <- t(cor(zscore$x[,1],data13[,-3]))
+kor2 <- t(cor(zscore$x[,2],data13[,-3]))
+tabkor<-data.frame(kor1,kor2)
+tabkor
+```
+
+```{r}
+pred <- predict(fit,data13.ts[,-3])
+pred
+```
+Posterior : peluang masuk kelas, diambil yang terbesar di setiap observasi.
+
+```{r}
+ct <- table(data13.ts$admit, pred$class)
+ct
+```
+
+```{r}
+sum(diag(prop.table(ct)))
+```
+Observasi yang masuk kelas 1 dan merupakan kelas 1 ada 17, sedangkan yang masuk kelas 3 dan merupakan kelas 1 ada 1 (ada 1 observasi yang salah masuk kelas). Observasi yang masuk kelas 2 dan merupakan kelas 2 ada 13. Observasi yang masuk kelas 3 dan merupakan kelas 3 ada 12, sedangkan yang masuk kelas 1 dan merupakan kelas 3 ada 4, yang masuk kelas 2 dan merupakan kelas 3 ada 2  (ada 6 observasi yang salah masuk kelas). Terlihat bahwa model berhasil mengklasifikasikan hampir semua data yaitu 85,7% dengan benar
+
+```{r}
+lda.data <- cbind(data13.tr, predict(fit)$x)
+ggplot(lda.data, aes(LD1, LD2)) +
+geom_point(aes(color = as.factor(admit))) +
+theme_minimal()
+```
+
+```{r}
+GPA = c(3.21,2.93)
+GMAT = c(562,619)
+data <- as.data.frame(cbind(GPA,GMAT))
+data
+predict(fit,data)
+```
+

@@ -1,0 +1,109 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(readr) #Membaca data
+library(dplyr) #Data processing
+library(DT) #Menampilkan tabel agar mudah dilihat di browser
+library(readxl)
+data10.1 <- read_excel("C:/Users/lili/Downloads/Data10Penugasan.xlsx",sheet="Sheet1")
+data10.1
+```
+
+```{r}
+datatable(data10.1, caption = "Variabel")
+data_standardized1 <- round(scale(data10.1[,2:5]),4) #Hanya memilih kolom/variabel yang berisikan indikator yang akan digunakan
+datatable(data_standardized1, caption = "Data Hasil Standardisasi")
+data_standardized1
+```
+
+```{r}
+jumlah_klaster <- c(1:9) #Vektor yang berisikan jumlah klaster yang ingin dilihat nilai dari total within-cluster sum of squares
+within_ss <- c() #Vektor kosong yang akan diisi nilai total within- cluster sum of squares
+for (i in jumlah_klaster) {
+  within_ss <- c(within_ss, kmeans(x = data_standardized1, centers = i, nstart = 25)$tot.withinss)
+}
+plot(x = jumlah_klaster, y = within_ss, type = "b", xlab = "Number of Cluster",ylab = "Total Within Sum of Squares",main = "Elbow Plot" ) 
+abline(v = 3, col = 'red')
+```
+Dari Elbow Plot di atas, dapat dilihat bahwa pada titik ke empat nilai total WSS mulai menunjukkan penurunan yang kurang berarti, sehingga berdasarkan plot tersebut akan ditentukan jumlah klaster yang akan dibentuk adalah emptat klaster.
+
+```{r}
+dist_data10.1 <- dist(data_standardized1)
+str(dist_data10.1)
+```
+
+```{r}
+#single linkage dengan scale
+res1_par <- hclust(dist_data10.1,method = "single")
+plot(res1_par,hang=-2,cex=1)
+rect.hclust(res1_par,k=2)
+```
+
+```{r}
+#complete linkage dengan scale
+res2_par <- hclust(dist_data10.1,method="complete")
+plot(res2_par)
+rect.hclust(res2_par,k=2)
+```
+
+```{r} 
+#average linkage dengan scale
+res3_par <- hclust(dist_data10.1,method="average")
+plot(res3_par,hang=-2)
+rect.hclust(res3_par,k=2)
+```
+
+```{r}
+#ward linkage
+res4_par <- hclust(dist_data10.1,method = "ward.D")
+plot(res4_par,hang=-1,cex=0.6)
+rect.hclust(res4_par,k=3)
+```
+
+untuk single linkage, 3 cluster masih buruk karena terdapat 1 cluster yang berisi hanya 1 kabupaten/kota yaitu Biak Numfor (6). Setelah dicoba 2 cluster masih belum baik.
+
+untuk complete linkage,3 cluster masih buruk karena terdapat 1 cluster yang berisi hanya 1 kabupaten/kota yaitu Biak Numfor (6). Setelah dicoba 2 kluster maka ditemukan pembagian kluster, kluster 1 : 6,29,3,9,4,5,1,16,10,17, kluster 2 : selebihnya.
+
+untuk average linkage, 3 cluster masih buruk karena terdapat 1 cluster yang berisi hanya 1 kabupaten/kota yaitu Biak Numfor (6). Setelah dicoba 2 cluster masih belum baik.
+
+
+```{r}
+library(factoextra)
+library(gridExtra)
+fviz_nbclust(data10.1[, c(2:5)], kmeans)
+```
+
+```{r}
+##Plot K-means dengan scalling
+
+kmeans2 <- kmeans(data_standardized1,centers = 2,nstart=25)
+kmeans3 <- kmeans(data_standardized1,centers = 3,nstart=25)
+kmeans5 <- kmeans(data_standardized1,centers = 5,nstart=25)
+kmeans7 <- kmeans(data_standardized1,centers = 7,nstart=25)
+
+#compare plot
+plot1 <- fviz_cluster(kmeans2,geom=c("point", "text"),data=data_standardized1, show.clust.cent = TRUE) + ggtitle("k = 2")
+plot2 <- fviz_cluster(kmeans3,geom="text",data=data_standardized1) + ggtitle("k = 3")
+plot3 <- fviz_cluster(kmeans5,geom="text",data=data_standardized1) + ggtitle("k = 5")
+plot4 <- fviz_cluster(kmeans7,geom="text",data=data_standardized1) + ggtitle("k = 7")
+grid.arrange(plot1,plot2,plot3,plot4,nrow=2)
+```
+Dari kmeans cluster, terlihat bahwa pengelompokan baik terjadi ketika menggunakan 2 kelompok. hal ini dikarenakan pada kelompok ke 3, kabupaten ke 6 menjadi kelompok tersendiri dengan anggota 1.
+
+```{r}
+fa1 <- fa(data10.1[,2:5], nfactors=2, fm="pa", scores=TRUE) # factor analysis 2 common factor
+biplot(fa1)
+```
+
+```{r}
+aggregate(data_standardized1,by=list(kmeans2$cluster),FUN=mean)
+```
+
+dari analisis biplot dapat disimpulkan bahwa kelompok pertama memiliki tingkat kemiskinan yang tinggi,IPM yang tinggi, dan TPT yang tinggi sehingga dapat dikatakan kelompok kabupaten/kota miskin atau terbelakang . Sedangkan kelompok kedua memiliki IPM, TPT yang tinggi sehingga dapat dikatakan kabupaten/kota yang sedang berkembang.
+
+

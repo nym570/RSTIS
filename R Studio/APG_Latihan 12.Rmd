@@ -1,0 +1,120 @@
+---
+title: "R Notebook"
+output:
+  word_document: default
+  html_notebook: default
+---
+
+Contoh 1. Seorang peneliti telah mengumpulkan data tentang tiga variabel psikologis, empat variabel akademik (nilai tes standar) dan jenis kelamin untuk 600 mahasiswa baru. Dia tertarik pada bagaimana himpunan variabel psikologis berhubungan dengan variabel akademik dan gender. Secara khusus, peneliti tertarik pada berapa banyak dimensi (variabel kanonik) yang diperlukan untuk memahami hubungan antara dua set variabel.
+
+Contoh 2. Seorang peneliti tertarik untuk mengeksplorasi hubungan antar faktor dari dua tes kepribadian multidimensi, MMPI dan NEO. Dia tertarik pada dimensi apa yang umum di antara tes dan berapa banyak varians yang dibagi di antara keduanya. Dia secara khusus tertarik untuk menemukan apakah dimensi neurotisme dari NEO dapat menjelaskan sejumlah besar varian bersama antara kedua tes tersebut.
+
+
+
+```{r}
+require(ggplot2)
+require(GGally)
+require(CCA)
+require(CCP)
+```
+
+```{r}
+mm <- read.csv("https://stats.idre.ucla.edu/stat/data/mmreg.csv")
+colnames(mm) <- c("Control", "Concept", "Motivation", "Read","Write", "Math", "Science", "Sex")
+summary(mm)
+```
+
+```{r}
+mm
+```
+
+
+```{r}
+xtabs(~Sex, data = mm)
+```
+
+```{r}
+psych <- mm[, 1:3]
+acad <- mm[, 4:8]
+
+ggpairs(psych)
+```
+
+```{r}
+ggpairs(acad)
+```
+
+```{r}
+matcor(psych, acad)
+```
+
+```{r}
+cc1 <- cc(psych, acad)
+# display the canonical correlations
+cc1$cor
+```
+dua dari tiga dimensi kanonik secara statistik signifikan pada tingkat 0,05. Dimensi 1 memiliki kanonik korelasi 0,46 antara set variabel, sedangkan untuk dimensi 2 korelasi kanonik jauh lebih rendah pada 0,17.
+
+
+
+```{r}
+# raw canonical coefficients
+cc1[3:4]
+```
+
+Peningkatan satu unit dalam read menyebabkan penurunan sebesar 0,0446 dalam variat kanonik pertama dari himpunan 2 ketika variabel lainnya dipertahankan konstan. Menjadi perempuan mengarah pada penurunan 0,6321 dalam dimensi 1 untuk kumpulan akademik dengan prediktor lain dianggap konstan
+
+
+```{r}
+# compute canonical loadings
+cc2 <- comput(psych, acad, cc1)
+
+# display canonical loadings
+cc2[3:6]
+```
+
+```{r}
+# tests of canonical dimensions
+rho <- cc1$cor
+## Define number of observations, number of variables in first set, and number of variables in the second set.
+n <- dim(psych)[1]
+p <- length(psych)
+q <- length(acad)
+
+## Calculate p-values using the F-approximations of different test statistics:
+p.asym(rho, n, p, q, tstat = "Wilks")
+```
+
+```{r}
+p.asym(rho, n, p, q, tstat = "Hotelling")
+```
+
+```{r}
+p.asym(rho, n, p, q, tstat = "Pillai")
+```
+
+```{r}
+p.asym(rho, n, p, q, tstat = "Roy")
+```
+
+Seperti yang ditunjukkan pada tabel di atas, pengujian pertama dimensi kanonis menguji apakah ketiga dimensi tersebut signifikan (yaitu, F = 11,72), pengujian berikutnya menguji apakah kombinasi dimensi 2 dan 3 signifikan (yaitu, F = 2,94) . Terakhir, tes terakhir menguji apakah dimensi 3 dengan sendirinya signifikan (tidak). Oleh karena itu dimensi 1 dan 2 masing-masing harus signifikan sedangkan dimensi tiga tidak.
+
+
+
+Ketika variabel dalam model memiliki standar deviasi yang sangat berbeda, koefisien standar memungkinkan perbandingan yang lebih mudah antar variabel. Selanjutnya, kami akan menghitung koefisien kanonik standar.
+```{r}
+# standardized psych canonical coefficients diagonal matrix of psych sd's
+s1 <- diag(sqrt(diag(cov(psych))))
+s1 %*% cc1$xcoef
+```
+
+
+```{r}
+# standardized acad canonical coefficients diagonal matrix of acad sd's
+s2 <- diag(sqrt(diag(cov(acad))))
+s2 %*% cc1$ycoef
+```
+
+Untuk variabel psikologis, dimensi kanonik pertama paling kuat dipengaruhi oleh locus of control (-.84) dan untuk dimensi kedua konsep diri (-.84) dan motivasi (.69). Untuk variabel akademik ditambah jenis kelamin, dimensi pertama terdiri dari membaca (-.45), menulis (-.35) dan jenis kelamin (-.32). Untuk penulisan dimensi kedua (0,41), sains (-,83) dan jenis kelamin (0,54) adalah variabel yang mendominasi.
+
+

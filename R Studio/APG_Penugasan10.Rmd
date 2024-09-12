@@ -1,0 +1,169 @@
+---
+title: "R Notebook"
+output:
+  word_document: default
+  html_notebook: default
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+#No1
+
+```{r}
+library(readxl)
+library(psych)
+library(GPArotation)
+data10.1 <- read_excel("C:/Users/lili/Downloads/Data10Penugasan.xlsx",sheet="Sheet1")
+data10.1_new <- data10.1[,-1]
+data10.1_new
+```
+
+```{r}
+eigen(cor(data10.1_new))
+```
+
+• Interpretasi cari eigen value \>=1, maka disini hanya 2 faktor
+
+```{r}
+scree(cor(data10.1_new))
+```
+
+```{r}
+fa1 <- fa(data10.1_new,nfactors=2,fm="pa",scores=TRUE)
+fa1
+```
+
+Berdasarkan analisis faktor tersebut, kedua faktor dapat menjelaskan
+keragaman data sebesar 73 persen, dengan factor 1 (57 persen) dan factor
+2 (16 persen). Variabel- variable yang berkorelasi tinggi dengan factor
+1 adalah: presentase penduduk miskin (miskin), indeks pembangunan
+manusia (IPM), dan tingkat pengangguran terbuka (TPT). Sementara
+variable yang berkorelasi dengan factor 2 adalah: gini ratio. Skor
+faktor pada output tersebut, tidak dapat dilihat langsung. Namun system
+di R sudah menghitungnya, sehingga dapat dibuat biplot nya
+
+```{r}
+biplot(fa1,labels=data10.1$Kab)
+```
+
+Garis merah melambangkan vektor ciri (eigen vector). Semakin panjang
+eigen vector menunjukkan bahwa semakin besar kontribusi variable
+tersebut terhadap pembentukan factor. Berdasarkan biplot tersebut, dapat
+diketahui bahwa variable persentase penduduk miskin (miskin) mempunyai
+peranan terbesar dalam pembentukan factor 1.
+
+Garis-garis eigen vector yang membentuk sudut semakin lancip menunjukkan
+bahwa ada korelasi yang tinggi diantara variabel. Pada Gambar biplot
+tersebut dapat dilihat bahwa variable tingkat pengangguran terbuka (TPT)
+dengan indeks pembangunan manusia (IPM) berkorelasi sangat tinggi .
+
+Berdasarkan biplot tersebut, dapat dilihat bahwa terdapat pengelompokkan
+objek. Misalnya,
+
+• Kelompok 1, terdiri dari kota jayapura, jayapura, mimika. Kelompok ini mempunyai karakteristik memiliki
+TPT dan IPM yang relative lebih tinggi dibanding kabupaten/kota lainnya.  Kelompok ini bisa dikatakan kelompok perkotaan maju. 
+• Kelompok 2, terdiri dari kabupaten/kota selain kota jayapura, jayapura, mimika, keerom, merauke. Kelompok ini mempunyai tingkat kemiskinan relative lebih tinggi. Kelompok ini bisa dikatakan kelompok perkotaan dengan tingkat kemiskinan yang tinggi. 
+• Sementara itu ada juga keerom dan merauke yang tidak ikut kedua kelompok tersebut dengan ciri rasio guni rasio yang rendah.
+
+#No2
+
+```{r}
+library(readxl)
+data10.2 <- read_excel("C:/Users/lili/Downloads/Data10Penugasan.xlsx",sheet="Sheet2")
+data10.2
+library(FactoMineR)
+library(factoextra)
+library(ggplot2)
+library(gplots)
+```
+
+```{r}
+library(gplots)
+data <- as.table(as.matrix(data10.2[,-1]))
+rownames(data) <- data10.2$Pendidikan
+data
+balloonplot(t(data), main ="Pendidikan", xlab ="", ylab="",label = FALSE, show.margins = FALSE,dotsize=4, text.size=0.5)
+```
+- Pekerjaan tani tambang banyak dilakukan oleh orang berpendidikan rendah (tanpa ijazah atau SD)
+- pendidikan SMA lebih banyak bekerja dibidang dagang dan jasa.
+- pendidikan SMP lebih banyak bekerja di bidang industri atau dagang
+- Orang orang yang melakukan pekerjaan dibidang jasa, semakin besar seiring dengan semakin tingginya pendidikannya
+
+```{r}
+an.ca <- CA(data, graph = FALSE)
+print(an.ca)
+summary(an.ca)
+```
+Dari output tersebut didapatkan: nilai Chi square yang menunjukkan statistik uji untuk independence test antar kategori baris dan kolom adalah sebesar 449.4398 (p-value =0 ). Nilai Chi square yang tinggi tersebut menunjukkan ada hubungan/ketergantunganantar kategori baris dan kolom.
+
+Terbentuk 4 dimensi, dimensi 1 menjelaskan 73.532% dari total inertia (variasi data), dimensi 2 sebesar 21.877%,dimensi 3 sebesar 3.483% dan dimensi 4 sebesar 1.108%. Namun jika kita menggunakan dua dimensi pertama (dimensi 1 dan 2) saja, total inertia (varians) yang bisa dijelaskan sudah cukup tinggi yaitu sebesar 95.409%.
+
+Output juga menghasilkan skor setiap dimensi untuk kategori baris dan kolom(ini tidak lain adalah titik-titik koordinat). Namun cukup sulit diinterpretasikan. Oleh karena itu perlu digunakan visualisasi grafik.
+
+```{r}
+df1 <- (nrow(data) - 1) * (ncol(data) - 1)
+qchisq(1-0.05,df=df1)
+```
+Nilai Chi-square tabel pada saat alpha=0.05% dan derajat bebas df=(nr-1)*(nc-1) adalah sebesar 41.33714. Kita lihat nilai Chi-square hitung = 449.4398 > Chi-square tabel. Hal ini menghasilkan keputusan “tolak H0” (antar kategori baris dan kolom independent), artinya ada hubungan antar kategori baris dan kolom
+
+```{r}
+fviz_screeplot(an.ca,addlabels = TRUE) +
+geom_hline(yintercept=14.29, linetype=2, color="red")
+```
+Data berisi 8 baris dan 5 kolom. Nilai yang diharapkan dari nilai eigen (eigen rata-rata) untuk setiap sumbu adalah 1/(nrow (data) -1) = 1/4 = 25% dalam bentuk baris. 1/(ncol (data) -1) = 1/7 = 14.29% dalam bentuk kolom. Setiap sumbu dengan kontribusi yang maksimum dari dua persentase ini harus dianggap penting dan termasuk dalam solusi untuk interpretasi data. Oleh karena itu untuk menentukan banyaknya dimensi dapat dilihat dari screeplot dengan cut off =14.29%
+
+Menurut grafik di atas, cukup digunakan dimensi 1 dan 2. Dimensi 3 dan 4
+menjelaskan hanya= 3.5% dan 1.1% dari total inertia yang berada di bawah nilai eigen rata-rata (14.29%) dan terlalu sedikit untuk disimpan dalam analisis lebih lanjut.
+
+```{r}
+library(Rcpp)
+# repel= TRUE untuk menghindari text tumpang tindih(running lambat jika titiknya banyak)
+fviz_ca_biplot(an.ca, repel = F)
+```
+Plot simetris mewakili profil baris dan kolom secara bersamaan dalam ruang bersama. Biplot simetris ini menunjukkan pola umum data. Warna biru adalah kategori untuk baris dan merah untuk kolom. Dalam hal ini, hanya jarak antar titik dalam baris atau jarak antar titik dalam kolom yang dapat diinterpretasikan. Sementara itu, jarak antara item baris dan kolom tidak memiliki makna. Jarak antara titik baris atau titik kolom memberikan ukuran similarity (atau disimilarity). Titik yang berdekatan menunjukkan adanya kesamaan profil
+
+- Pekerjaan akomodasi, kontruksi, dagang, industri, transportasi, listrik air gas banyak dilakukan orang berpendidikan SMP dilanjutkan dengan pendidikan SMA
+- Pekerjaan dibidang jasa banyak dilakukan lulusan pergurusan tinggi
+
+```{r}
+fviz_ca_biplot(an.ca,map ="rowprincipal", arrow = c(TRUE, TRUE),
+repel = F)
+```
+Jika sudut antara dua anak panah (biru dan merah) lancip, maka itu adalah hubungan yang kuat antara baris dan kolom yang bersesuaian. Pada gambar tersebut menunjukkan bahwa
+- Pekerjaan dibidang jasa berhubungan erat dengan lulusan perguruan tinggi
+- Sementara pekerjaan tani tambang berhubungan erat dengan masyarakat yang tidak memiliki ijazah
+
+```{r}
+#Biplot kontribusi setiap kategori Baris terhadap pembentukan Dimensi
+fviz_ca_biplot(an.ca, map ="colgreen", arrow = c(TRUE, FALSE),
+repel = F)
+```
+• Kategori “PT dan SD” berkontribusi penting dalam pembentukan Dimensi pertama 
+• Kategori “SMP,SMA,No Ijazah” berkontribusi penting dalam Dimensi 2.
+
+
+```{r}
+#Biplot kontribusi setiap kategori Kolom terhadap Dimensi
+fviz_ca_biplot(an.ca, map ="rowgreen", arrow = c(FALSE, TRUE), repel
+= F)
+```
+
+Semakin dekat panah (dalam hal jarak sudut) ke sumbu dan panjang vektor /panah semakin panjang, maka semakin besar kontribusi kategori baris pada sumbu itu relatif terhadap sumbu lainnya. Jika panah berada di tengah antara keduanya, kategori barisnya berkontribusi pada dua sumbu pada tingkat yang sama. Pada Gambar tersebut dapat kita lihat bahwa:
+- Kategori kolom “tani tambang” memiliki kontribusi penting terhadap dimensi 2 secara negatif, sedangkan kolom "air gas listrik" serta akomodasi berkontribusi penting terhadap dimensi 2 secara positif
+- Kategori kolom "jasa" memiliki kontribusi penting terhadap dimensi 1
+
+```{r}
+deskripsi.dimensi <- dimdesc(an.ca, axes = c(1,2))
+deskripsi.dimensi
+```
+
+Dengan demikian kita dapat melabeli Dimensi 1 sebagai “Pekerjaan yang didominasi lulusan perguruan tinggi”, sementara Dimensi 2 sebagai “Pekerjaan yang didominasi masyarakat yang tidak menyenyam perguruan tinggi”.
+
+
+
+
+
+
+
+

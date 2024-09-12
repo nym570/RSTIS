@@ -1,0 +1,83 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+data.jawa <- read.csv("C:/Users/lili/Downloads/Data IPM 2022 Jawa.csv", sep = ";")
+str(data.jawa)
+```
+
+```{r}
+data.jawa <- data.jawa[,-1]
+data.jawa
+```
+
+```{r}
+sample.jawa <- sample(c(TRUE, FALSE), nrow(data.jawa), replace=TRUE, prob=c(0.7,0.3))
+train.jawa <- data.jawa[sample.jawa, ]
+test.jawa   <- data.jawa[!sample.jawa, ]
+```
+
+
+*SVM*
+#Linear
+```{r}
+library(e1071)
+model.svm <- data.jawa$IPM~HLS+RLS+UHH+Pengeluaran
+linear.tune <- tune.svm(IPM~.,data=train.jawa,kernel="linear",cost = c(.001,.01,.1,1,5,10))
+summary(linear.tune)
+```
+
+
+```{r}
+best.linear<-linear.tune$best.model
+tune.test<-predict(best.linear,newdata=test.jawa)
+plot(tune.test,test.jawa$IPM)
+tune.test.resid<-tune.test-test.jawa$IPM
+mean(tune.test.resid^2)
+```
+
+#Polynomial
+```{r}
+poly.tune <- tune.svm(IPM~.,data=train.jawa,kernal="polynomial",degree = c(3,4,5),coef0 = c(.1,.5,1,2,3,4))
+summary(poly.tune)
+```
+
+```{r}
+best.poly<-poly.tune$best.model
+poly.test<-predict(best.poly,newdata=test.jawa)
+plot(poly.test,test.jawa$IPM)
+poly.test.resid<-poly.test-test.jawa$IPM
+mean(poly.test.resid^2)
+```
+
+
+#radial
+```{r}
+rad.tune <- tune.svm(IPM~.,data=train.jawa,kernel="radial",gamma = c(.1,.5,1,2,3,4))
+summary(rad.tune)
+```
+
+```{r}
+best.rad<-rad.tune$best.model
+rad.test<-predict(best.rad,newdata=test.jawa)
+plot(rad.test,test.jawa$IPM)
+rad.test.resid<-rad.test-test.jawa$IPM
+mean(rad.test.resid^2)
+```
+yang dipilih yg linear
+
+```{r}
+normalize <- function(x){
+  return ((x - min(x)) / (max(x) - min(x))) 
+  }
+data.jawa.subset.n <- as.data.frame(lapply(data.jawa[,-1], normalize))
+head(data.jawa.subset.n)
+```
+
+```{r}
+
+```
+

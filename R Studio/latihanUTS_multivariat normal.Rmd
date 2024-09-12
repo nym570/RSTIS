@@ -1,0 +1,141 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(rgl)
+library(plot3D)
+library(plot3Drgl)
+library(squash)
+library(MASS)
+```
+
+```{r}
+mu <- c(0,0)
+Sig <- matrix(c(1,0,0,1),nrow=2,byrow=TRUE)
+bvn1 <- mvrnorm(500,mu=mu,Sigma=Sig)
+bvn1
+```
+
+```{r}
+plot(bvn1[,1],bvn1[,2],pch=20)
+smoothScatter(bvn1[,1],bvn1[,2],colramp=rainbow2)
+```
+
+```{r}
+x_c <- cut(bvn1[,1],20)
+y_c <- cut(bvn1[,2],20)
+z <- table(x_c,y_c)
+hist2(x_c,y_c,key.args=list(stretch=2))
+hist3D(z=z,border="black")
+hist3Drgl(z=z,border="black")
+```
+
+```{r}
+library(mixtools)
+mu1 <- c(0,0)
+Sig1 <- matrix(c(1,0.5,0.5,1),nrow=2)
+data_bvn <- mvrnorm(500,mu=mu1,Sigma=Sig1)
+plot(data_bvn,xlab="x1",ylab="x2")
+ellipse(mu1,Sig1,0.05,col="red")
+```
+
+```{r}
+mu2 <- c(5,10)
+Sig2 <- matrix(c(9,16,16,64),nrow=2)
+eig2 <- eigen(Sig2)
+eig2
+print("============")
+long1<-mu2+sqrt(5.99*eig2$values[1])%*%eig2$vectors[,1]
+long2<-mu2-sqrt(5.99*eig2$values[1])%*%eig2$vectors[,1]
+short1<-mu2+sqrt(5.99*eig2$values[2])%*%eig2$vectors[,2]
+short2<-mu2-sqrt(5.99*eig2$values[2])%*%eig2$vectors[,2]
+
+bvn2 <- mvrnorm(500, mu = mu2, Sigma = Sig2 )
+plot(bvn2,xlab="X1",ylab="X2")
+points(5,10, pch=3, cex=2, col="blue")
+ellipse(mu2,Sig2,0.95,col="red")
+```
+
+```{r}
+elips_eq <- function(X,mu,sig){
+  t(X-mu)%*%solve(sig)%*%(X-mu)
+}
+X1 <- c(10,20)
+X2 <- c(16,20)
+
+cek1 <- elips_eq(X1,mu2,Sig2)
+ifelse(cek1 <= qchisq(0.95,2),"titik di dalam elips","titik di luar elips")
+
+cek2 <- elips_eq(X2,mu2,Sig2)
+ifelse(cek2 <= qchisq(0.95,2),"titik di dalam elips","titik di luar elips")
+```
+
+#transformasi kenormalan
+```{r}
+data("cars")
+plot(cars)
+summary(cars)
+x_c <- cut(cars[,1], 10)
+y_c <- cut(cars[,2], 10)
+z <- table(x_c, y_c)
+
+hist3D(z=z, border="black")
+hist3Drgl(z=z, border="black")
+
+library(RVAideMemoire)
+mshapiro.test(cars)
+```
+
+```{r}
+library(car)
+pow <- powerTransform(cars)
+pow
+speed_t <- cars$speed^pow$lambda[1]
+dist_t <- cars$dist^pow$lambda[2]
+cars_t <- data.frame(speed_t,dist_t)
+mshapiro.test(cars_t)
+```
+
+```{r}
+mut <- c(75,70)
+Sigt <- matrix(c(10,12,12,16),nrow=2)
+eigt <- eigen(Sigt)
+elips_eq <- function(X,mu,sig){
+  t(X-mu)%*%solve(sig)%*%(X-mu)
+}
+Xt <- c(10,20)
+
+cek1 <- elips_eq(Xt,mut,Sigt)
+ifelse(cek1 <= qchisq(0.95,2),"titik di dalam elips","titik di luar elips")
+```
+
+```{r}
+check <- function(dat,X,alpha,df){
+  mu <- colMeans(dat)
+  sig <- cov(dat)
+  eig <- eigen(sig)
+  uji <- t(X-mu)%*%solve(sig)%*%(X-mu)
+  ifelse(uji <= qchisq(1-alpha,df),"titik di dalam elips","titik di luar elips")
+}
+el <- function(dat,X,alpha,df){
+  mu <- colMeans(dat)
+  sig <- cov(dat)
+  eig <- eigen(sig)
+  data_bvn <- mvrnorm(100,mu=mu,Sigma=sig)
+  plot(data_bvn,xlab="x1",ylab="x2")
+  ellipse(mu,sig,alpha,col="red")
+}
+```
+
+```{r}
+x1 <- c(108.28,152.36,95.04,65.45,62.97,263.99,265.79,285.06,92.01,165.68)
+x2 <- c(17.05,16.59,10.91,14.14,9.52,25.33,18.54,15.73,8.10,11.13)
+x3 <- c(1484.10,750.33,766.42,1110.46,1031.29,195.26,193.83,191.11,1175.16,211.15)
+dataf<-data.frame(x1,x2,x3)
+mshapiro.test(dataf)
+check(dataf,c(230,24,230.5),0.05,3)
+```
+

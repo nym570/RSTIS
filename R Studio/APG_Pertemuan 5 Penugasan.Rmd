@@ -1,0 +1,263 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Import Data
+
+```{r}
+library(tidyr)
+library(rstatix)
+library(readxl)
+tugas5 <- read_excel("C:/Users/lili/Downloads/Data Penugasan 5.xlsx")
+```
+
+## Summary Statistics
+
+```{r}
+tugas5 %>%
+  group_by(tanah) %>%
+  get_summary_stats(yield, water, herbicide, type = "mean_sd")
+```
+
+## Uji Homogenitas Matriks Kovarians
+
+```{r}
+library("biotools")
+boxM(tugas5[,2:4],tugas5$tanah)
+```
+
+## Uji Multivariat Normal
+
+```{r}
+library(RVAideMemoire)
+loam <- as.matrix(tugas5[1:8, -1])
+mshapiro.test(loam)
+
+sandy <- as.matrix(tugas5[9:16, -1])
+mshapiro.test(sandy)
+
+clay <- as.matrix(tugas5[17:24, -1])
+mshapiro.test(clay)
+```
+```{r}
+qf(0.95,6,38)
+```
+
+
+## Uji Manova
+
+```{r}
+Stat <- manova(cbind(yield, water, herbicide)~tanah, data=tugas5)
+summary(Stat, test="Wilks")
+```
+
+# MANOVA manual
+
+## Rata-rata perlakuan
+```{r}
+data <- as.data.frame(tugas5)
+splitted <- split(data[,2:4], data$tanah)
+
+means <- sapply(splitted, function(x) {
+  apply(x, 2, mean)
+}, simplify = 'data.frame')
+means
+```
+
+## Rata-rata gabungan
+```{r}
+var <- row.names(means)
+group <- unique(data1$tanah)
+p <- length(var)
+p
+g <- length(group)
+g
+N <- dim(data)[1]
+N
+n <- dim(data)[1] / length(group)
+n
+ni <- sapply(splitted, function(x) {dim(x)[1]})
+ni
+
+xbar <- colMeans(data[,2:4])
+xbar
+```
+
+## H
+```{r}
+B = matrix(data = 0, nrow = p, ncol = p, dimnames = list(var, var))
+for (i in 1:p) {
+  for (j in 1:i) {
+    B[i,j] <- n * sum((means[i,] - total.means[i]) * (means[j,] - total.means[j]))
+    B[j,i] <- n * sum((means[j,] - total.means[j]) * (means[i,] - total.means[i]))
+  }
+}
+B
+```
+
+## E
+```{r}
+W = matrix(data = 0, nrow = p, ncol = p, dimnames = list(var, var))
+for (i in 1:p) {
+  for (j in 1:i) {
+    b <- c()
+    for (k in splitted) {
+      a <- sum((k[,i] - mean(k[,i])) * (k[,j] - mean(k[,j])))
+      b <- append(b, a)
+    }
+    W[i,j] <- sum(b)
+    W[j,i] <- sum(b)
+  }
+}
+W
+```
+
+## Wilk's Lambda
+```{r}
+det(E)/det(E+H)
+```
+
+## Confidence Interval
+```{r}
+alpha <- 0.05
+tcrit <- qt(1 - alpha/(p*g*(g-1)), df = N-g)
+res <- data.frame()
+for (i in 1:p) {
+  for (l in 1:g) {
+    for (k in 1:g) {
+      if (k < l) {
+        res <- rbind(res, data.frame(var[i], group[k], group[l], 
+                                     means[i,k]-means[i,l] - tcrit*sqrt(E[i,i]/(N-g)*(1/ni[k]+1/ni[l])),
+                                     means[i,k]-means[i,l] + tcrit*sqrt(E[i,i]/(N-g)*(1/ni[k]+1/ni[l]))))
+      }
+    }
+  }
+}
+colnames(res) <- c("variable", "group1", "group2", "LB", "UB")
+rownames(res) <- NULL
+res
+```
+
+```{r}
+manova <- function(nL,xbarL,SL,alpha,method){
+  library(crayon)
+  p = nrow(xbarL[[1]])
+  g = length(nL)
+  n = sum(nL) #n total
+  W = matrix(rep(0,p*p),ncol=p,nrow=p) #sum square within/error
+  xbar = 0 
+  for(L in 1:g){
+    W = W + (nL[L]-1)*SL[[L]]
+    xbar = xbar + nL[[L]]*xbarL[[L]]
+  }
+  xbar = xbar/n #mean overall
+  S_pooled = W/(n-g)
+  B = matrix(rep(0,p*p),ncol=p,nrow=p) #sum square between/treatments
+  for(L in  1:g){
+    B = B + nL[[L]]*(xbarL[[L]]-xbar)%*%t((xbarL[[L]]-xbar))
+  }
+  Tot = B+W #sum square total
+  lambda = 0
+  if(tolower(method)=="wilks")
+    lambda = det(W)/det(Tot)
+  else if(tolower(method)=="hotellig-lawley" || tolower(method)=="lawley-hotelling")
+    lambda = sum(diag(B%*%solve(W)))
+  else if(tolower(method)=="pillai")
+    lambda = sum(diag(B%*%solve(B+W)))
+  else if(tolower(method)=="roy")
+    lambda = max(eigen(W%*%solve(B+W))$values)
+  else{
+    stop("The method not available")
+  }
+  sample_large = FALSE
+  for(L in 1:g){
+    if(nL[[L]]>5*p) sample_large = TRUE
+    else {
+      sample_large = FALSE
+      break
+    }
+  }
+  stat_uji = 0
+  nilai_kritis = 0
+  if(sample_large==TRUE){
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }else 
+    if(p==1 && g>=2){
+    stat_uji = (n-g)/(g-1)*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,g-1,n-g)
+  }else if(p==2 && g>=2){
+    stat_uji = (n-g-1)/(g-1)*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*(g-1),2*(n-g-1))
+  }else if(p>=1 && g==2){
+    stat_uji = (n-p-1)/p*(1-lambda)/lambda
+    nilai_kritis = qf(1-alpha,p,n-p-1)
+  }else if(p>=1 && g==3){
+    stat_uji = (n-p-2)/p*(1-sqrt(lambda))/sqrt(lambda)
+    nilai_kritis = qf(1-alpha,2*p,2*(n-p-2))
+  }else{
+    stat_uji = -(n-1-(p+g)/2)*log(lambda)
+    nilai_kritis = qchisq(1-alpha,p*(g-1))
+  }
+  print(paste("n = ",n))
+  print(paste("g = ",g))
+  print(paste("p = ",p))
+  print("Mean Overall (xbar) = ")
+  print(xbar)
+  print("S pooled = ")
+  print(S_pooled)
+  print("Sum Square Error/Within (W) = ")
+  print(W)
+  print("Sum Square Treatments/Between (B) = ")
+  print(B)
+  print("Sum Square Total (T) = ")
+  print(Tot)
+  if(tolower(method)=="wilks")
+    print("Method : Wilks")
+  else if(tolower(method)=="hotelling-laylew" || tolower(method)=="lawley-hotelling")
+    print("Method : Hotelling-Lawley")
+  else if(tolower(method)=="pillai")
+    print("Method : Pillai")
+  else if(tolower(method)=="roy")
+    print("Method : Roy")
+  print(paste("Lambda = ",lambda))
+  if(sample_large){
+    print("This is large sample size")
+  }else{
+    print("This is small sample size")
+  }
+  print(paste("Test Statistics Value = ", stat_uji))
+  print(paste("Critical Value = ",nilai_kritis))
+  if(stat_uji>nilai_kritis){
+    print("Conclusion: Reject H0")
+    for(i in 1:g){
+      if(i==g)
+          break
+      for(j in 1:p){
+        for(k in i+1:g){
+          if(k>g)
+            next
+          print(paste("CI of mean(group",i,", variable",j,") - mean(group",k,", variable",j,")"))
+          lower = xbarL[[i]][j]-xbarL[[k]][j]-qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          upper = xbarL[[i]][j]-xbarL[[k]][j]+qt(1-alpha/(p*g*(g-1)),n-g)*sqrt((1/nL[i]+1/nL[k])*W[j,j]/(n-g))
+          print(paste(">> Lower = ",lower))
+          print(paste(">> Upper = ",upper))
+          if(ceiling(lower)>0 || floor(upper)<0)
+            cat(yellow("Note: This causes reject H0"),"\n")  
+        }
+      }
+    }
+  }else{
+    print("Conclusion: Not Reject H0")
+    
+      
+  }
+}
+```
+

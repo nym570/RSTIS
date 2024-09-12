@@ -1,0 +1,146 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(readr) #Membaca data
+library(dplyr) #Data processing
+library(DT) #Menampilkan tabel agar mudah dilihat di browser
+library(readxl)
+dataset <- read_csv("G:/download chrome/miskin_jatim.csv")
+dataset
+```
+
+```{r}
+dataset[,2:6] <- scale(dataset[,2:6])
+dataset
+```
+
+# Agglomerative Hierarchical Clustering
+```{r}
+# Matriks Distance/Jarak (Package stats)
+# pilihan method: euclidean (default), maximum, manhattan, canberra, binary, minkowski
+d <- dist(dataset, method = "euclidean")
+
+# pilihan method: complete (default), average, single, ward.D, ward.D2, median, centroid, mcquitty
+hc <- hclust(d, method = "complete")
+
+plot(hc, cex = 0.6, hang = -1)
+# abline(h=3.5, col="red")
+```
+
+```{r}
+set.seed(1)
+fviz_nbclust(dataset, hcut, method = "wss") +
+  geom_vline(xintercept = 2, linetype = 2)
+```
+
+
+```{r}
+jumlah_klaster <- c(1:9) #Vektor yang berisikan jumlah klaster yang ingin dilihat nilai dari total within-cluster sum of squares
+within_ss <- c() #Vektor kosong yang akan diisi nilai total within- cluster sum of squares
+for (i in jumlah_klaster) {
+  within_ss <- c(within_ss, kmeans(x = dataset[2:6], centers = i, nstart = 25)$tot.withinss)
+}
+plot(x = jumlah_klaster, y = within_ss, type = "b", xlab = "Number of Cluster",ylab = "Total Within Sum of Squares",main = "Elbow Plot" ) 
+abline(v = 7, col = 'red')
+```
+
+```{r}
+fviz_nbclust(dataset, hcut, method = "silhouette")
+```
+
+```{r}
+fviz_nbclust(dataset[2:6], hcut, method = "gap_stat")
+```
+
+Dari Elbow Plot dengan berbagai metode di atas, dapat dilihat bahwa pada titik ke tiga nilai total WSS mulai menunjukkan penurunan yang kurang berarti, sehingga berdasarkan plot tersebut akan ditentukan jumlah klaster yang akan dibentuk adalah dua klaster.
+
+```{r}
+dist_data <- dist(dataset[2:6],method = "euclidean")
+dist_data
+
+```
+
+```{r}
+res1_par <- hclust(dist_data, method = "single")
+plot(res1_par,hang=-2,cex=1)
+rect.hclust(res1_par,k=2)
+```
+```{r}
+res1_par <- hclust(dist_data, method = "complete")
+plot(res1_par,hang=-2,cex=1)
+rect.hclust(res1_par,k=2)
+```
+
+```{r}
+res1_par <- hclust(dist_data, method = "average")
+plot(res1_par,hang=-2,cex=1)
+rect.hclust(res1_par,k=2)
+```
+
+```{r}
+res1_par <- hclust(dist_data, method = "ward.D")
+plot(res1_par,hang=-2,cex=1)
+rect.hclust(res1_par,k=2)
+```
+untuk single linkage, 2 cluster masih buruk karena terdapat 1 cluster yang berisi hanya 2 kabupaten.
+
+untuk complete linkage,average linkage, dan ward cukup baik karena pada pembagian 2 cluster cluster 1 terdapat 9 kabupaten sedangkan 29 kabupaten cluster 2 yaitu cluster 1 adalah 9,11,12,13,14,26,27,28,29 sedangkan cluster 2 sisanya.
+
+#evaluasi
+```{r}
+sub_grp <- cutree(res1_par, k=2)
+stat <- cluster.stats(dist_data, sub_grp) # Statistik dari Klaster
+
+stat$clus.avg.silwidths # Silhouette per klaster
+stat$avg.silwidth # Rata-rata Silhouette seluruhnya
+stat$dunn # Indeks Dunn
+stat$dunn2 # Indeks Dunn versi lain
+stat$entropy # Entropi
+stat$ch # Indeks Calinski and Harabasz
+stat$sindex # Separation index
+stat$wb.ratio # average.within/average.between
+```
+
+
+```{r}
+set.seed(123)
+kmeans_clustering <- kmeans(x = dataset[2:6], centers = 2,
+nstart = 25) #parameter nstart digunakan untuk memberitahu fungsi berapa kali inisiasi centroid awal (secara acak) yang akan dibentuk.
+kmeans_clustering
+```
+Pengelompokan objek ke dalam 2 klaster berdasarkan nilai centroid dari masing-masing variabel. Objek objek dengan nilai centroid yang hampir sama akan dikelompokkan dalam satu klaster sehingga didapat pembagian klasternya sebagai berikut
+
+Dari output diatas dapat di ketahui bahwa klaster pertama beranggotakan 11 observasi, klaster kedua 27 observasi. Dilihat dari means nya, cluster 1 merupakan wilayah jatim yang miskin (AHH,AMH,RLS,Pengeluaran rendah dan tingkat kemiskinan P1 Tinggi), sedangkan cluster 2 merupakan wilayah jatim yang tidak miskin (AKK,AMH,RLS,Pengeluaran tinggi, P1 kemiskinan rendah)
+
+```{r}
+stat <- cluster.stats(d, kmeans_clustering$cluster) # Statistik dari Klaster
+
+stat$clus.avg.silwidths # Silhouette per klaster
+stat$avg.silwidth # Rata-rata Silhouette seluruhnya
+stat$dunn # Indeks Dunn
+stat$dunn2 # Indeks Dunn versi lain
+stat$entropy # Entropi
+stat$ch # Indeks Calinski and Harabasz
+stat$sindex # Separation index
+stat$wb.ratio # average.within/average.between
+```
+
+dari evaluasi, agglomerative lebih baik karena nilai indeks lebih tinggi
+
+```{r}
+library(dplyr)
+data_baru <- dataset %>% mutate(Klaster = kmeans_clustering$cluster)
+data_baru <- data_baru[,c(1,7)]
+data_baru %>% arrange(Klaster)
+```
+
+Kota Lumajang, Jember, Bondowoso, Situbondo, Probolinggo, Pasuruan, Bojonegoro, Bangkalan, Sampang, Pamekasan, dan Sumenep merupakan kabupaten yang masuk ke cluster 1 dan dapat dikategorikan kabupaten miskin.
+
+```{r}
+
+```
+

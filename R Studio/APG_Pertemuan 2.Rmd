@@ -1,0 +1,80 @@
+---
+title: "APG_Pertemuan 2"
+output: html_document
+date: "2022-09-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data2 <- read.csv2("C:/Users/lili/Downloads/Contoh 2.csv")
+data2 <- data.frame(lapply(data2,as.numeric))
+data2
+```
+
+```{r}
+pairs(~Fuel+Repair+Capital,data=data2,main="Bivariate Scatter Plots")
+```
+
+```{r}
+x <- data2
+cm <- colMeans(x)
+S <- cov(x)
+d <- apply(x, 1, function(x) t(x - cm) %*% solve(S) %*% (x - cm))
+plot(qc <- qchisq((1:nrow(x) - 1/2) / nrow(x), df = 3), sd <- sort(d),
+     xlab = expression(paste(chi[3]^2, " Quantile")),
+     ylab = "Ordered distances", xlim = range(qc) * c(1, 1.1))
+abline(a = 0, b = 1)
+
+```
+
+```{r}
+qqnorm(data2$Fuel); qqline(data2$Fuel,col="red")
+qqnorm(data2$Repair); qqline(data2$Repair,col="red")
+```
+
+
+```{r}
+library(MVN)
+library(RVAideMemoire)
+mshapiro.test(data2)
+```
+
+```{r}
+mvn(data2, mvnTest = "dh",alpha = 0.05)
+```
+
+
+```{r}
+datasquare<-data2^2
+
+datasqrt<-sqrt(data2)
+
+datalog<-log(data2)
+
+```
+
+```{r}
+mshapiro.test(datasquare)
+mshapiro.test(datasqrt)
+mshapiro.test(datalog)
+```
+
+```{r}
+mvn(datasqrt, mvnTest = "energy",alpha = 0.05)
+```
+```{r}
+mvn(datasqrt, mvnTest = "dh",alpha = 0.05)
+```
+
+```{r}
+mvn(datasqrt, mvnTest = "mardia",alpha = 0.05)
+```
+
+```{r}
+mvn(datasqrt, mvnTest = "hz",alpha = 0.05)
+```
+
+

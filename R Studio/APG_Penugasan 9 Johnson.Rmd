@@ -1,0 +1,85 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(readxl)
+data <- read_excel("C:/Users/lili/Downloads/data.xlsx")
+data <- data[,2:6]
+data
+```
+
+```{r}
+data <- as.data.frame(sapply(data, as.numeric))
+for(i in 1:ncol(data)) {
+  hist(data[,i], probability = TRUE, main = colnames(data)[i], xlab = colnames(data)[i])
+  lines(density(data[,i]))
+}
+```
+
+```{r}
+library(MVN)
+mvn(data, mvnTest = "mardia")
+```
+
+```{r}
+library(REdaS)
+bart_spher(data)
+```
+
+```{r}
+R <- cor(data)
+R
+```
+
+```{r}
+library(psych)
+KMO(data)
+```
+
+```{r}
+scree(R)
+```
+
+```{r}
+eigen <- eigen(R)
+eigen
+```
+
+```{r}
+fa.parallel(R)
+```
+
+
+```{r}
+fa1 <- fa(data, nfactors = 2, fm = "pa", rotate = "varimax", residuals = T)
+fa1
+```
+
+```{r}
+fa1$loadings
+```
+
+
+```{r}
+fa.diagram(fa1$loadings)
+```
+```{r}
+fa1$scores
+```
+
+
+```{r}
+(fac <- factanal(data, factors = 2,rotation = "varimax", method = "mle"))
+```
+
+```{r}
+fa.diagram(fac$loadings)
+```
+
+```{r}
+fac$scores
+```
+

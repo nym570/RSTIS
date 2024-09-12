@@ -1,0 +1,49 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+data(Investment, package="sandwich")
+Investment <- as.data.frame(Investment[,1:6])
+Investment
+```
+
+```{r}
+#standardisasi data
+zinvestment<-data.frame(scale(Investment))
+#cek histogram dan kurva setiap variabel
+hist(zinvestment[,1], prob=TRUE, main="X1", xlab="X1")
+lines(density(zinvestment[,1]))
+hist(zinvestment[,2], prob=TRUE, main="X2", xlab="X2")
+lines(density(zinvestment[,2]))
+hist(zinvestment[,3], prob=TRUE, main="X3", xlab="X3")
+lines(density(zinvestment[,3]))
+hist(zinvestment[,4], prob=TRUE, main="X4", xlab="X4")
+lines(density(zinvestment[,4]))
+hist(zinvestment[,5], prob=TRUE, main="X5", xlab="X5")
+lines(density(zinvestment[,5]))
+hist(zinvestment[,6], prob=TRUE, main="X6", xlab="X6")
+lines(density(zinvestment[,6]))
+```
+
+```{r}
+#normality test
+library(MVN)
+result <- mvn(data =zinvestment,mvnTest = "mardia")
+#Bartlett test dan KMO
+library(REdaS)
+library(psych)
+bart_spher(zinvestment)
+KMO(zinvestment)
+R<-cov(zinvestment)
+```
+
+```{r}
+eigen<-eigen(R)
+eigen
+Investment_fac<-factanal(factors=2,covmat=R)
+Investment_fac
+```
+

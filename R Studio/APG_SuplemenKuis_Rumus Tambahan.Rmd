@@ -1,0 +1,144 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Rumus tambahan
+
+#PCA
+Jika diketahui matriks korelasi
+```{r}
+R1 <- matrix(c(1,0.81,-0.72,0.81,1,-0.61,-0.72,-0.61,1),3,3,byrow=TRUE)
+```
+```{r}
+eigR1 <- eigen(R1)
+eigR1
+```
+```{r}
+prop <- eigR1$values/sum(eigR1$values)
+prop
+```
+```{r}
+cum <- rep(NA,length(prop))
+cum[1] <- prop[1]
+for(i in 2:length(prop)){
+  cum[i] <- cum[i-1] + prop[i]
+}
+cum
+```
+Komponen utama yang dipilih untuk mewakili variabel adalah komponen utama yang
+menyumbangkan proporsi terhadap varians total minimal sebesar 80%.
+Sehingga, KU1 cukup untuk menjelaskan variabel karena menyumbang keragaman 80,99% dari
+varians total. Kemudian KU2 dan KU3 bisa dihilangkan.
+Persamaan komponen utama memiliki koefisien vektor eigen. Sehingga persamaan komponen
+utama yang didapat adalah..
+Y1 = -0,6038X1 - 0,5768X2 + 0,5502X3
+
+#PCA
+Jika diketahui matriks s, ubah ke R
+```{r}
+V = diag(sqrt(diag(s)))
+R = solve(V)%*%s%*%solve(V)
+```
+
+#PCA
+mencari scores
+```{r}
+#jika pake korelasi
+pY1Z1=eigen(R1)$vectors[1,1]*sqrt(eigen(R1)$values[1])
+pY1Z2=eigen(R1)$vectors[2,1]*sqrt(eigen(R1)$values[1])
+pY2Z1=eigen(R1)$vectors[1,2]*sqrt(eigen(R1)$values[2])
+pY2Z2=eigen(R1)$vectors[2,2]*sqrt(eigen(R1)$values[2])
+pY1Z1
+pY1Z2
+pY2Z1
+pY2Z2
+#jika pake covarian
+rykep1x1=eigen(s)$vectors[1,1]*sqrt(eigen(s)$values[1])/sqrt(s[1,1])
+rykep1x2=eigen(s)$vectors[2,1]*sqrt(eigen(s)$values[1])/sqrt(s[2,2])
+rykep1x1
+rykep1x2
+```
+
+#FA
+hubungan rho, L, psi
+```{r}
+rho=matrix(c(1,0.63,0.45,0.63,1,0.35,0.45,0.35,1),3,3)
+L=matrix(c(0.9,0.7,0.5))
+psi=matrix(c(0.19,0,0,0,0.51,0,0,0,0.75),3,3)
+
+rho1 = L%*%t(L)+psi
+rho1
+L1 = diag(sqrt(rho-psi))
+L1
+psi1 = rho - L%*%t(L)
+psi1
+```
+
+#FA
+komunalitas
+hi^2 = Li1^2 +Li2^2 + ....
+```{r}
+h1 = L[1]^2
+h2 = L[2]^2
+h3 = L[3]^2
+h1
+h2
+h3
+```
+Total varians variabel Z1 yang dijelaskan common factor 1 sebesar 0.81
+Total varians variabel Z2 yang dijelaskan common factor 1 sebesar 0.49
+Total varians variabel Z3 yang dijelaskan common factor 1 sebesar 0.25
+
+#FA
+common factor
+```{r}
+Corr(Z1,F1)=Cov(Z1,F1)=L11=0.9
+Corr(Z2,F1)=Cov(Z2,F1)=L21=0.7
+Corr(Z2,F1)=Cov(Z3,F1)=L31=0.5
+```
+Penamaan common factor yaitu dari variabel Z1
+
+#FA
+akar ciri
+lambda = L1p^2 + L2p^2 + ....
+```{r}
+
+```
+
+
+#FA
+mengerjakan EFA manual
+
+mencari s
+```{r}
+lambda1=1.96
+lambda2=0.68
+lambda3=0.36
+e1=matrix(c(0.625,0.593,0.507))
+e2=matrix(c(-0.216,-0.491,0.843))
+e3=matrix(c(0.749,-0.638,-0.177))
+s=lambda1*e1%*%t(e1)+lambda2*e2%*%t(e2)+lambda3*e3%*%t(e3)
+s
+```
+
+mencari loading dari eigen
+```{r}
+L=matrix(c(sqrt(lambda1)*e1[1],sqrt(lambda1)*e1[2],sqrt(lambda1)*e1[3]))
+L
+```
+
+mencari psi dari s
+```{r}
+psi=diag(diag(s-L%*%t(L)))
+psi
+```
+
+proporsi total faktor dari common factor
+
+```{r}
+lambda1/(s[1,1]+s[2,2]+s[3,3])
+```
+basis s -> lambda/(s[1,1]+s[2,2]+...)
+basis r -> lambda/p
+
